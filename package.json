@@ -1,0 +1,26 @@
+{
+  "name": "gphotos-puppeteer",
+  "version": "1.0.0",
+  "description": "Download Google Photos with puppeteer",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/daneroo/gphotos-puppeteer.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/daneroo/gphotos-puppeteer/issues"
+  },
+  "homepage": "https://github.com/daneroo/gphotos-puppeteer#readme",
+  "dependencies": {
+    "puppeteer": "^2.0.0"
+  },
+  "devDependencies": {
+    "standard": "^14.3.1"
+  }
+}
