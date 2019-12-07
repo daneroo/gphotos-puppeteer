@@ -47,7 +47,7 @@ async function main () {
     console.log(`Current active element href is ${href}`)
     photoURLs.push(href)
   }
-  console.log(`found ${photoURLs.length} photos`)
+  console.log(`Found ${photoURLs.length} photos`)
   await sleep(3000)
 
   const dlpage = await browser.newPage()
