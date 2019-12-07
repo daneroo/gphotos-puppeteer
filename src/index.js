@@ -22,6 +22,19 @@ async function main () {
 
   const page = await browser.newPage()
 
+  showPages(browser, 'Before', page)
+  await page.evaluate(() => window.open('https://www.example.com/', 'Worker1', 'width=640,height=400'))
+  const newWindowTarget = await browser.waitForTarget(target => target.url() === 'https://www.example.com/')
+  const nuPage = await newWindowTarget.page()
+  console.log(nuPage)
+  showPages(browser, 'After', nuPage)
+
+  await sleep(10000)
+  if (page) {
+    await browser.close()
+    return
+  }
+
   await page.goto(baseURL)
   await sleep(1000)
   console.log('Navigated to $(baseURL)')
@@ -70,10 +83,17 @@ async function main () {
   await browser.close()
 }
 
+async function showPages (browser, msg, page) {
+  const pages = await browser.pages()
+
+  console.log(`${msg}: ${pages.length} pages`)
+  pages.forEach(async (p, i) => {
+    console.log(`${page === p ? '=>' : '  '} ${i}: ${await p.title()} ${await p.url()}`)
+  })
+}
+
 async function sleep (ms) {
   return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve()
-    }, ms)
+    setTimeout(resolve, ms)
   })
 }
