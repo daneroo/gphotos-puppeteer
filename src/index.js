@@ -26,10 +26,10 @@ async function main () {
   await page.evaluate(() => window.open('https://www.example.com/', 'Worker1', 'width=640,height=400'))
   const newWindowTarget = await browser.waitForTarget(target => target.url() === 'https://www.example.com/')
   const nuPage = await newWindowTarget.page()
-  console.log(nuPage)
+  console.log(`nuPage: ${await nuPage.title()} ${await nuPage.url()}`)
   showPages(browser, 'After', nuPage)
 
-  await sleep(10000)
+  await sleep(1000)
   if (page) {
     await browser.close()
     return
