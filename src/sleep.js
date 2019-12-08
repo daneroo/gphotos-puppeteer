@@ -1,7 +1,9 @@
 module.exports = sleep
 
-async function sleep (ms) {
+async function sleep (ms, value = ms) {
   return new Promise((resolve) => {
-    setTimeout(resolve, ms)
+    setTimeout(() => {
+      resolve(value)
+    }, ms)
   })
 }
