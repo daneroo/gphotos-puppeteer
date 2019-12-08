@@ -1,7 +1,8 @@
-const puppeteer = require('puppeteer')
 
-const userDataDir = './data/user-data-dir'
-const userDownloadDir = './data/downloads'
+const dataDirs = require('./dataDirs.js')
+const browserSetup = require('./browserSetup')
+const sleep = require('./sleep')
+
 const baseURL = 'https://photos.google.com/'
 
 mainWithTry()
@@ -15,26 +16,47 @@ async function mainWithTry () {
 }
 
 async function main () {
-  const browser = await puppeteer.launch({
-    headless: false,
-    userDataDir: userDataDir
+  const headless = false
+  const numWorkers = 2
+  const { userDataDir, userDownloadDir } = await dataDirs.make('./data')
+  const { browser, mainPage, workers } = await browserSetup.setup({
+    headless,
+    numWorkers,
+    userDataDir
   })
 
-  const page = await browser.newPage()
+  console.log(`Found ${workers.length} workers`)
 
-  showPages(browser, 'Before', page)
-  await page.evaluate(() => window.open('https://www.example.com/', 'Worker1', 'width=640,height=400'))
-  const newWindowTarget = await browser.waitForTarget(target => target.url() === 'https://www.example.com/')
-  const nuPage = await newWindowTarget.page()
-  console.log(`nuPage: ${await nuPage.title()} ${await nuPage.url()}`)
-  showPages(browser, 'After', nuPage)
-
+  await authenticate(mainPage)
   await sleep(1000)
-  if (page) {
+
+  const numItems = 10
+  const items = await extractItems(mainPage, numItems)
+  await sleep(3000)
+
+  // const dlpage = await browser.newPage()
+  const doneItems = []
+  await downloadItems(workers, items, doneItems, userDownloadDir)
+  // await downloadItems(workers[0], items, doneItems, userDownloadDir)
+  // await downloadItems(workers[1], items, doneItems, userDownloadDir)
+
+  // const p0 = downloadItems(workers[0], items, doneItems, userDownloadDir)
+  // await sleep(10000)
+  // const p1 = downloadItems(workers[1], items, doneItems, userDownloadDir)
+
+  // await [p0, p1]
+  await sleep(3000)
+
+  if (mainPage) {
     await browser.close()
     return
   }
 
+  console.log('Closing browser')
+  await browser.close()
+}
+
+async function authenticate (page) {
   await page.goto(baseURL)
   await sleep(1000)
   console.log('Navigated to $(baseURL)')
@@ -49,51 +71,44 @@ async function main () {
     console.log(`Current URL is ${url}. Awaiting auth`)
     await sleep(2000)
   }
+}
 
-  // extract as while loop
-  const photoURLs = []
-  for (let i = 0; i < 100; i++) {
+async function extractItems (page, numItems) {
+  const items = []
+  for (let i = 0; i < numItems; i++) {
     await page.keyboard.press('ArrowRight')
     await sleep(100)
     const activeHrefJSHandle = await page.evaluateHandle(() => document.activeElement.href)
     const href = await activeHrefJSHandle.jsonValue()
     console.log(`Current active element href is ${href}`)
-    photoURLs.push(href)
+    items.push(href)
   }
-  console.log(`Found ${photoURLs.length} photos`)
-  await sleep(3000)
+  console.log(`Found ${items.length} photos`)
+  return items
+}
 
-  const dlpage = await browser.newPage()
-  await dlpage._client.send('Page.setDownloadBehavior', {
-    behavior: 'allow',
-    downloadPath: userDownloadDir
-  })
-  await sleep(3000)
-  await dlpage.bringToFront()
-  for (let i = 0; i < photoURLs.length; i++) {
-    console.log(`Going to page: ${photoURLs[i]}`)
-    await dlpage.goto(photoURLs[i])
-    await dlpage.keyboard.down('Shift')
-    await dlpage.keyboard.press('KeyD')
-    await dlpage.keyboard.up('Shift')
+async function downloadItems (workers, items, doneItems, userDownloadDir) {
+  // TODO(daneroo): move this to setup...
+  for (let w = 0; w < workers.length; w++) {
+    const { id, page } = workers[w]
+    console.log(`Downloading items with worker: ${id}`)
+    await page._client.send('Page.setDownloadBehavior', {
+      behavior: 'allow',
+      downloadPath: userDownloadDir
+    })
+    console.log(`  set dlDir to: ${userDownloadDir}`)
+  }
+  await sleep(1000)
+  while (items.length > 0) { // TODO(daneroo): Queue not done...
+    const { id, page } = workers[items.length % workers.length]
+    const item = items.shift() // take first item from items queue
+    console.log(`Worker(${id}): Going to page: ${item}`)
+    await page.goto(item)
+    console.log(`Worker(${id}): Landed on page:${item}`)
+    await page.keyboard.down('Shift')
+    await page.keyboard.press('KeyD')
+    await page.keyboard.up('Shift')
     await sleep(3000)
+    doneItems.push(item)
   }
-
-  console.log('Closing browser')
-  await browser.close()
-}
-
-async function showPages (browser, msg, page) {
-  const pages = await browser.pages()
-
-  console.log(`${msg}: ${pages.length} pages`)
-  pages.forEach(async (p, i) => {
-    console.log(`${page === p ? '=>' : '  '} ${i}: ${await p.title()} ${await p.url()}`)
-  })
-}
-
-async function sleep (ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms)
-  })
 }
