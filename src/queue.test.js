@@ -1,5 +1,5 @@
 
-const { newQueue } = require('./queue.js')
+const { newQueue, assign } = require('./queue.js')
 const sleep = require('./sleep')
 
 describe('Queue', () => {
@@ -11,6 +11,60 @@ describe('Queue', () => {
       doneFetching: false,
       doneProcessing: false
     })
+  })
+  test('assign none to the consumer', async () => {
+    const q = {
+      items: [],
+      inFlight: [null, null, null]
+    }
+    const consumer = async (item) => {
+      await sleep(10)
+      console.log(`setup ${item}`)
+      return async function () {
+        // console.log(`task start ${item}`)
+        await sleep(20)
+        // console.log(`task ${item}`)
+      }
+    }
+    const assigned = await assign(q, consumer)
+    expect(assigned).toBe(0)
+    await Promise.all(q.inFlight)
+  })
+  test('assign all to the consumer', async () => {
+    const q = {
+      items: ['a', 'b', 'c'],
+      inFlight: [null, null, null]
+    }
+    const consumer = async (item) => {
+      await sleep(10)
+      console.log(`setup ${item}`)
+      return async function () {
+        // console.log(`task start ${item}`)
+        await sleep(20)
+        // console.log(`task ${item}`)
+      }
+    }
+    const assigned = await assign(q, consumer)
+    expect(assigned).toBe(3)
+    await Promise.all(q.inFlight)
+  })
+  test('assign one to the consumer', async () => {
+    const q = {
+      items: ['a', 'b', 'c'],
+      inFlight: ['assigned', null, 'assigned']
+    }
+    const consumer = async (item) => {
+      await sleep(10)
+      // console.log(`setup ${item}`)
+      return async function () {
+        // console.log(`task start ${item}`)
+        await sleep(20)
+        console.log(`task ${item}`)
+      }
+    }
+    const assigned = await assign(q, consumer)
+    expect(assigned).toBe(1)
+    await Promise.all(q.inFlight)
   })
 })
 

@@ -4,12 +4,13 @@ Download Google Photos with puppeteer
 
 ## TODO
 
-- `mkdir -p data/..`
+- `mkdir -p data/workers/n`
 - Manage Windows (n workers)
 - Create Queue (done enqueing,done processing)
 - Downloader (move file, report size, status)
+- CI (github actions), evergreen et all
 - Report Speed for listing, downloading
-- Tests (Queue,Metrics)
+- Benchmarks (Queue,Metrics)
 - Multiple Profiles
 - State (DB...)
 - Gatsby Site for monitoring, browsing
