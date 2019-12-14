@@ -4,6 +4,7 @@ Download Google Photos with puppeteer
 
 ## TODO
 
+- See also: <https://github.com/daneroo/chromedp-manytabs>
 - `mkdir -p data/workers/n`
 - Manage Windows (n workers)
 - Create Queue (done enqueing,done processing)
