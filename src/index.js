@@ -5,15 +5,10 @@ const sleep = require('./sleep')
 
 const baseURL = 'https://photos.google.com/'
 
-mainWithTry()
-
-async function mainWithTry () {
-  try {
-    main()
-  } catch (err) {
+main()
+  .catch(err => {
     console.error(err)
-  }
-}
+  })
 
 async function main () {
   const headless = false
@@ -66,10 +61,31 @@ async function authenticate (page) {
     const url = page.url()
     if (url === baseURL) {
       console.log('Authenticated!')
+      await getActiveUser(page)
       break
     }
     console.log(`Current URL is ${url}. Awaiting auth`)
     await sleep(2000)
+  }
+}
+
+// TODO(daneroo): what if querySelector returns null...
+async function getActiveUser (page) {
+  // document.querySelector('[aria-label^="Google Account:"]').getAttribute('aria-label')
+  // "Google Account: Daniel Lauzon
+  // (daniel.lauzon@gmail.com)"
+  const activeHrefJSHandle = await page.evaluateHandle(() => document.querySelector('[aria-label^="Google Account:"]').getAttribute('aria-label')
+  )
+  const activeUser = await activeHrefJSHandle.jsonValue()
+  // const activeUser = `Google Account: Daniel Lauzon
+  // (daniel.lauzon@gmail.com)`
+  const re = /Google Account:\s+(.*[^\s])\s+\((.*)\)/
+  const found = activeUser.match(re)
+  const [, name, userId] = found
+  if (found.length === 3) {
+    console.log(`Current active user is: ${name} (${userId})`)
+  } else {
+    console.log('Current active user: not found')
   }
 }
 
