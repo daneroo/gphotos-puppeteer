@@ -51,7 +51,7 @@ async function main () {
       const startRun = perf.now()
       let startBatch = perf.now() // will be reset every batchSize iterations
       const batchSize = 200
-      const maxItems = 400
+      const maxItems = 1e6
 
       let n = 0
       let currentUrl

@@ -4,9 +4,9 @@ Download Google Photos with puppeteer
 
 ## TODO
 
-- reload every n=1000?
+- refactor navN
 - dowload deny?
-- Report Speed for listing, downloading
+- include bandwidth in metrics?
 - yargs headless, num, verify, list, optimistic
 - See also: <https://github.com/daneroo/chromedp-manytabs>
 - `mkdir -p data/workers/n`
@@ -19,6 +19,15 @@ Download Google Photos with puppeteer
 - State (DB...)
 - Gatsby Site for monitoring, browsing
 - Alternative for listing with Google [Photos Library API](https://developers.google.com/photos/library/reference/rest)
+
+## Stability
+
+### nojunk (30386 items)
+
+```bash
+::run n:30387 unresolved:29 elapsed:13958.320s (232 minutes, batchSize=1000)
+::run n:30387 unresolved:50 elapsed:11165.720s (186 minutes, batchSize=200)
+```
 
 ## Queue Operation
 
