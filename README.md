@@ -4,13 +4,16 @@ Download Google Photos with puppeteer
 
 ## TODO
 
+- reload every n=1000?
+- dowload deny?
+- Report Speed for listing, downloading
+- yargs headless, num, verify, list, optimistic
 - See also: <https://github.com/daneroo/chromedp-manytabs>
 - `mkdir -p data/workers/n`
 - Manage Windows (n workers)
 - Create Queue (done enqueing,done processing)
 - Downloader (move file, report size, status)
 - CI (github actions), evergreen et all
-- Report Speed for listing, downloading
 - Benchmarks (Queue,Metrics)
 - Multiple Profiles
 - State (DB...)

@@ -14,8 +14,8 @@ main()
     console.error(err)
   })
 
-async function main() {
-  const headless = false
+async function main () {
+  const headless = true
   const numWorkers = 0
   const { userDataDir, userDownloadDir } = await dataDirs.make('./data')
   const { browser, mainPage, workers } = await browserSetup.setup({
@@ -55,32 +55,74 @@ async function main() {
     // Here we expect url to match href
     if (url === href) {
       console.log(`FirstPhoto (url:${href})`)
-      await sleep(1000)
+      await sleep(500)
 
-      let n = 10
+      let n = 0
       let currentUrl
-      while (n > 0) {
+      let previousUrl
+      let sameCount = 0
+      const unresolveds = []
+      while (true) {
         currentUrl = mainPage.url()
-        const id = photoIdFromURL(currentUrl)
-        if (id) {
-          const responseHandler = responseHandlerForId(id)
-          mainPage.on('response', responseHandler)
-          await shiftD(mainPage)
-
-          await sleep(5000)
-
-          mainPage.removeListener('response', responseHandler)
+        if (currentUrl === previousUrl) {
+          sameCount++
         } else {
-          console.log(`Current does not look like a photo detail page irl:${currentUrl}`)
+          sameCount = 0
+
+          const id = photoIdFromURL(currentUrl)
+          if (id) {
+            const timeout = 5000
+            const [responseHandler, responsePromise] = responseHandlerForId(n, id, timeout)
+            mainPage.on('response', responseHandler)
+
+            await shiftD(mainPage)
+
+            // Promise.race between responsePromise and sleep
+            // let [completed] = await Promise.race(queue.map(p => p.then(res => [p])));
+            const responseWithTimeout = Promise.race([
+              responsePromise,
+              sleep(timeout, { timeout: timeout })
+            ])
+            const firstFinished = await responseWithTimeout
+            if (firstFinished.timeout) {
+              // we should queue up the unresolved responses here, but not the promise, as the handler will be removed.
+              unresolveds.push({ n, id /*, responsePromise */ })
+              console.log(`XX ${n} Response (${id}) was not resolved in ${firstFinished.timeout}ms`)
+            } else { // our response resolved before timeout
+              const { /* id, */ filename, url, elapsed } = firstFinished
+              console.log('>>', n, filename, elapsed, id, url) // .substring(27, 57)
+              mainPage.removeListener('response', responseHandler)
+            }
+            //  since the handler is removed, it will not resolve later, better retry
+            mainPage.removeListener('response', responseHandler)
+          } else {
+            console.log(`Current url does not look like a photo detail page. url:${currentUrl}`)
+          }
+          n++
+        }
+        if (sameCount > 3) {
+          break
         }
 
         const nurl = await nextDetailPage(mainPage)
         if (!nurl) {
           console.log(`Looks like nextDetailPage failed: ${nurl}`)
         }
-
-        n--
+        previousUrl = currentUrl
       }
+      // Now look at the unresolved items
+      console.log(`There were ${unresolveds.length} unresolved items`)
+      for (const unresolved of unresolveds) {
+        const { n, id } = unresolved
+        console.log(` - unresolved ${n} (${id})`)
+      }
+      //  we could check for those whose handler resolved before it was removed, but...
+      // for (const unresolved of unresolveds) {
+      //   const { n, id, responsePromise } = unresolved
+      //   console.log(` - wait for ${unresolved.n} (${unresolved.id})`)
+      //   const { /* id, */ filename, url, elapsed } = await responsePromise
+      //   console.log('>>', n, filename, elapsed, id, url)
+      // }
     } else {
       console.log('Active href on main does not match detail url')
       console.log(` Main active href: ${href}`)
@@ -104,23 +146,37 @@ async function main() {
   await browser.close()
 }
 
-function responseHandlerForId(id) {
+// Not sure I shoud have the id here
+function responseHandlerForId (n, id, timeout) {
   // parameter; id is included in closure
+  const start = +new Date()
+  let resolver
+  const responsePromise = new Promise(function (resolve, reject) {
+    resolver = resolve
+  })
+
   const responseHandler = response => {
     const url = response._url
     const headers = response.headers()
     const contentDisposition = headers['content-disposition']
     const filename = filenameFromContentDisposition(contentDisposition)
     const contentLength = headers['content-length']
-    if (filename && url.includes('usercontent')) {
-      console.log('>>', filename, contentLength, id, url.substring(27, 57))
-      // console.log('\n', url, '\n')
+    // if (filename && url.includes('usercontent')) {
+    if (filename) {
+      // console.log('>>', filename, contentLength, id, url.substring(27, 57))
+      // could return all the headers
+      const elapsed = +new Date() - start
+      resolver({ n, id, filename, contentLength, url, elapsed })
+      if (elapsed > timeout) {
+        console.log(`** Resolved after ${elapsed}ms > ${timeout}ms (${id}`)
+        console.log(`   url: (${url}`)
+      }
     }
   }
-  return responseHandler
+  return [responseHandler, responsePromise]
 }
 
-function photoIdFromURL(url) {
+function photoIdFromURL (url) {
   if (!url) {
     return null
   }
@@ -134,16 +190,22 @@ function photoIdFromURL(url) {
   return null
 }
 
-function filenameFromContentDisposition(contentDisposition) {
+function filenameFromContentDisposition (contentDisposition) {
   if (!contentDisposition) {
     return null
   }
+  // tests
   // attachment;filename="IMG_9487.JPG"
-  const re = /attachment;filename="(.*)"/
+  // attachment; filename="MVI_5560.AVI"  // notice there can be differing whitespa after the semi-colon
+  // attachment; filename="response.bin"; filename*=UTF-8''response.bin  // should be excluded
+  const re = /attachment;\s*filename="(.*)"$/
   const found = contentDisposition.match(re)
   // console.log({ found })
   if (found && found.length === 2) {
     return found[1]
+  } else {
+    // for debugging
+    // console.log('Content-Disposition not matched:', contentDisposition)
   }
   return null
 }
@@ -151,7 +213,7 @@ function filenameFromContentDisposition(contentDisposition) {
 // authenticate returns the result of getActiveUser(),
 // or waits forever for authentication
 // flag to return early (if we are headless)
-async function authenticate(page) {
+async function authenticate (page) {
   await page.goto(baseURL)
   await sleep(1000) // wait for something else?
   // console.log(`..navigated to ${baseURL}`)
@@ -175,7 +237,7 @@ async function authenticate(page) {
 // TODO(daneroo): araia-label may have different prefix text in other locales, better RegExp?
 // return {name,userId} if found
 // return {name:'Unknown',userId:null} if NOT found
-async function getActiveUser(page) {
+async function getActiveUser (page) {
   // document.querySelector('a[href^="https://accounts.google.com/SignOutOptions"]').getAttribute('aria-label')
   // "Google Account: Daniel Lauzon
   // (daniel.lauzon@gmail.com)"
