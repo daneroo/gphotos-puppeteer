@@ -2,10 +2,10 @@
 const dataDirs = require('./dataDirs.js')
 const browserSetup = require('./browserSetup')
 const sleep = require('./sleep')
+const perf = require('./perf')
 // const { downloadItems } = require('./flowWorker')
 // const { extractItems } = require('./flowMain')
 const { navToFirst, enterDetailPage, nextDetailPage, shiftD } = require('./flowMain')
-const { performance, PerformanceObserver } = require('perf_hooks')
 
 const baseURL = 'https://photos.google.com/'
 
@@ -21,7 +21,8 @@ async function main () {
   const { browser, mainPage, workers } = await browserSetup.setup({
     headless,
     numWorkers,
-    userDataDir
+    userDataDir,
+    userDownloadDir
   })
   // console.log(`Found ${workers.length} workers`)
 
@@ -32,21 +33,11 @@ async function main () {
   await authenticate(mainPage)
   await sleep(1000)
 
-  const obs = new PerformanceObserver((list) => {
-    const entry = list.getEntries()[0]
-    console.log(`${entry.duration}ms : ('${entry.name}')`)
-  })
-  obs.observe({ entryTypes: ['measure'], buffered: false }) // we want to react to full measurements and not individual marks
-
   await mainPage._client.send('Page.setDownloadBehavior', {
     behavior: 'allow',
     downloadPath: userDownloadDir
   })
   console.log(`  set dlDir to: ${userDownloadDir}`)
-
-  // performance.mark('start')
-  // performance.mark('end')
-  // performance.measure(`nextDetailPage(${n}) : ${nurl}`, 'start', 'end')
 
   const href = await navToFirst(mainPage)
   if (href) {
@@ -56,6 +47,11 @@ async function main () {
     if (url === href) {
       console.log(`FirstPhoto (url:${href})`)
       await sleep(500)
+
+      const startRun = perf.now()
+      let startBatch = perf.now() // will be reset every batchSize iterations
+      const batchSize = 200
+      const maxItems = 400
 
       let n = 0
       let currentUrl
@@ -89,8 +85,8 @@ async function main () {
               unresolveds.push({ n, id /*, responsePromise */ })
               console.log(`XX ${n} Response (${id}) was not resolved in ${firstFinished.timeout}ms`)
             } else { // our response resolved before timeout
-              const { /* id, */ filename, url, elapsed } = firstFinished
-              console.log('>>', n, filename, elapsed, id, url) // .substring(27, 57)
+              // const { /* id, */ filename, url, elapsed } = firstFinished
+              // console.log('>>', n, filename, elapsed, id, url.substring(0, 80)) // .substring(27, 57)
               mainPage.removeListener('response', responseHandler)
             }
             //  since the handler is removed, it will not resolve later, better retry
@@ -98,7 +94,22 @@ async function main () {
           } else {
             console.log(`Current url does not look like a photo detail page. url:${currentUrl}`)
           }
+
           n++
+          if (n % batchSize === 0) {
+            const startReload = perf.now()
+            await mainPage.reload({ waitUntil: ['networkidle0', 'domcontentloaded'] })
+            perf.log(`reload n:${n}`, startReload, 1)
+
+            // also printStats
+            perf.log(`batch batch:${batchSize} n:${n} unresolved:${unresolveds.length}`, startBatch, batchSize)
+            perf.log(`cumul batch:${batchSize} n:${n} unresolved:${unresolveds.length}`, startRun, n)
+            startBatch = perf.now()
+          }
+        }
+
+        if (n > maxItems) {
+          break
         }
         if (sameCount > 3) {
           break
@@ -116,13 +127,9 @@ async function main () {
         const { n, id } = unresolved
         console.log(` - unresolved ${n} (${id})`)
       }
-      //  we could check for those whose handler resolved before it was removed, but...
-      // for (const unresolved of unresolveds) {
-      //   const { n, id, responsePromise } = unresolved
-      //   console.log(` - wait for ${unresolved.n} (${unresolved.id})`)
-      //   const { /* id, */ filename, url, elapsed } = await responsePromise
-      //   console.log('>>', n, filename, elapsed, id, url)
-      // }
+      //  we could check for promises whose handler resolved before it was removed, but...
+
+      perf.log(`run batch:${batchSize} n:${n} unresolved:${unresolveds.length}`, startRun, n)
     } else {
       console.log('Active href on main does not match detail url')
       console.log(` Main active href: ${href}`)

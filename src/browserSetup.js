@@ -4,8 +4,8 @@ module.exports = {
   setup
 }
 
-async function setup ({ headless = false, numWorkers = 0, userDataDir }) {
-  console.log(`Lauching browser headless: ${headless} userDataDir: ${userDataDir}`)
+async function setup ({ headless = false, numWorkers = 0, userDataDir, userDownloadDir }) {
+  console.log(`Lauching browser headless:${headless} userDataDir:${userDataDir} userDownloadDir:${userDownloadDir}`)
   const browser = await puppeteer.launch({
     headless,
     userDataDir
