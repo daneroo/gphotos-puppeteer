@@ -11,6 +11,7 @@ async function setup ({ headless = false, numWorkers = 0, userDataDir }) {
     userDataDir
   })
   const mainPage = await getFirst(browser)
+  // registerListener(mainPage, 'mainPage')
   const workers = []
 
   for (let w = 0; w < numWorkers; w++) {
@@ -23,6 +24,27 @@ async function setup ({ headless = false, numWorkers = 0, userDataDir }) {
     mainPage,
     workers
   }
+}
+
+async function registerListener (page, name) {
+  // await page.setRequestInterception(true)
+  // page.on('request', request => {
+  //   const url = request._url
+  //   if (url.includes('usercontent')) {
+  //     console.log('<<', name, url.substring(27, 57))
+  //   }
+  // })
+  page.on('response', response => {
+    const url = response._url
+    const headers = response.headers()
+    const contentDisposition = headers['content-disposition']
+    // 'content-disposition
+    // console.log(name, headers, Object.keys(response))
+    if (url.includes('usercontent') && contentDisposition.startsWith('attachment')) {
+      console.log('>>', name, contentDisposition, url.substring(27, 57))
+      console.log('\n', url, '\n')
+    }
+  })
 }
 
 // assume but verify that the browser has a single page
@@ -54,6 +76,9 @@ async function pageInNewWindow (browser, launchFromPage, id) {
   await page.goto(url)
 
   console.log(`new page: ${await page.title()} ${await page.url()}`)
+
+  // registerListener(page, `Worker-${id}`)
+
   await showPages(browser, `After making ${id}`, page)
   return {
     id,
