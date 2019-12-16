@@ -1,7 +1,8 @@
 const puppeteer = require('puppeteer')
 
 module.exports = {
-  setup
+  setup,
+  registerListener
 }
 
 async function setup ({ headless = false, numWorkers = 0, userDataDir, userDownloadDir }) {

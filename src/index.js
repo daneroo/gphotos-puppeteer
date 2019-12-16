@@ -18,7 +18,7 @@ async function main () {
   const headless = true
   const numWorkers = 0
   const { userDataDir, userDownloadDir } = await dataDirs.make('./data')
-  const { browser, mainPage, workers } = await browserSetup.setup({
+  const { browser, mainPage/*, workers */ } = await browserSetup.setup({
     headless,
     numWorkers,
     userDataDir,

@@ -9,17 +9,17 @@ module.exports = {
 }
 
 // now Returns the current high resolution millisecond timestamp, where 0 represents the start of the current node process
-function now() {
+function now () {
   return performance.now()
 }
 
 // since returns a high resolution millisecond difference since <start>
-function since(start) {
+function since (start) {
   return performance.now() - start
 }
 
 // rate() returns a common formatted string for timing measurements
-function metrics(name, start, n) {
+function metrics (name, start, n) {
   const elapsed = since(start)
   const average = (n !== 0) ? elapsed / n : 0 // could be +Inf
   const averageSecs = average / 1000.0
@@ -34,7 +34,7 @@ function metrics(name, start, n) {
   }
 }
 
-function log(name, start, n) {
+function log (name, start, n) {
   const {
     elapsed, // duration
     average, // seconds per iteration

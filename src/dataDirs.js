@@ -5,7 +5,7 @@ module.exports = {
   make
 }
 
-async function make(basePath = './data') {
+async function make (basePath = './data') {
   const paths = {
     userDataDir: path.join(basePath, 'user-data-dir'),
     userDownloadDir: path.join(basePath, 'downloads')
