@@ -85,9 +85,11 @@ async function main () {
               unresolveds.push({ n, id /*, responsePromise */ })
               console.log(`XX ${n} Response (${id}) was not resolved in ${firstFinished.timeout}ms`)
             } else { // our response resolved before timeout
-              // const { /* id, */ filename, url, elapsed } = firstFinished
+              const { /* id, */ filename /*, url, elapsed */ } = firstFinished
               // console.log('>>', n, filename, elapsed, id, url.substring(0, 80)) // .substring(27, 57)
-              mainPage.removeListener('response', responseHandler)
+
+              // no need to await, move happens in it's own time.
+              /* await */ dataDirs.moveDownloadedFile(filename, id, userDownloadDir)
             }
             //  since the handler is removed, it will not resolve later, better retry
             mainPage.removeListener('response', responseHandler)
@@ -138,14 +140,6 @@ async function main () {
   } else {
     console.log('couldn\'t find first photo on main page')
   }
-
-  // const numItems = 10
-  // const items = await extractItems(mainPage, numItems)
-  // await sleep(3000)
-  // console.log(`Found ${items.length} photos`)
-
-  // const doneItems = []
-  // await downloadItems(workers, items, doneItems, userDownloadDir)
 
   await sleep(3000)
 

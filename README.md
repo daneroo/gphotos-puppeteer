@@ -26,7 +26,10 @@ Download Google Photos with puppeteer
 
 ```bash
 ::run n:30387 unresolved:29 elapsed:13958.320s (232 minutes, batchSize=1000)
-::run n:30387 unresolved:50 elapsed:11165.720s (186 minutes, batchSize=200)
+::run batch:200 n:30387 unresolved:50:: rate:2.72 elapsed:11165.720s (186 minutes, batchSize=200)
+::run batch:200 n:30387 unresolved:87:: rate:2.55/s avg:392.70ms n:30387 elapsed:11933.0139s
+
+21891 uniqe files..
 ```
 
 ## Queue Operation
