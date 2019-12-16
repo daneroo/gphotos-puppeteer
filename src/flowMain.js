@@ -1,9 +1,11 @@
 const sleep = require('./sleep')
+const { downloadHandlerWithTimeout } = require('./handler')
 
 module.exports = {
   extractItems,
   navToFirst,
   enterDetailPage,
+  initiateDownload,
   nextDetailPage,
   navRight,
   navLeft,
@@ -60,10 +62,29 @@ async function enterDetailPage (page, maxDelay = 3000) {
   }
 }
 
-// from main/album page, enter detail page
+// initiateDownload returns a promis of either:
+//  - timeout: {n,id,timeout}
+//  - download initiated response: { n, id, filename, contentLength, url, elapsed }
+// shiftD could be injected?
+async function initiateDownload (page, n, id) {
+  const timeout = 5000
+  const [responseHandler, responseWithTimeoutPromise] = downloadHandlerWithTimeout(n, id, timeout)
+  page.on('response', responseHandler)
+
+  await shiftD(page) // coupled to the handler..
+
+  // await before we remove the listener
+  const eitherResponseOrTimeout = await responseWithTimeoutPromise
+
+  //  since the handler is removed, it will not resolve later.
+  page.removeListener('response', responseHandler)
+  return eitherResponseOrTimeout
+}
+
+// from the detail page
 // return url of detail page: e.g. https://photos.google.com/photo/AF1QipMOl0XXrO9WPSv5muLRBFpbyzGsdnrqUqtF8f73
 // or null if not successful
-// send a single `\n`, and wait for the url to change from origUrl.
+// send a single `navRight`, and wait for the url to change from origUrl.
 async function nextDetailPage (page, maxDelay = 3000) {
   const origUrl = page.url()
   await sleep(10) // be a good citizen

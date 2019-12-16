@@ -27,6 +27,7 @@ Download Google Photos with puppeteer
 ### nojunk (30386 items)
 
 ```bash
+# on dirac:
 ::run n:30387 unresolved:29 elapsed:13958.320s (232 minutes, batchSize=1000)
 ::run batch:200 n:30387 unresolved:50:: rate:2.72 elapsed:11165.720s (186 minutes, batchSize=200)
 ::run batch:200 n:30387 unresolved:87:: rate:2.55/s avg:392.70ms n:30387 elapsed:11933.0139s
@@ -34,8 +35,19 @@ Download Google Photos with puppeteer
 ::run batch:200 n:30387 unresolved:22:: rate:2.85/s avg:351.39ms n:30387 elapsed:10677.7708s
 
 
-21891 files..
 30323 files, 28594 MB with move
+```
+
+## peru (714 items)
+
+```bash
+# on goedel:
+::run batch:200 n:714 unresolved:0:: rate:3.89/s avg:257.37ms n:714 elapsed:183.7657s
+::run batch:200 n:714 unresolved:0:: rate:3.76/s avg:266.10ms n:714 elapsed:189.9984s
+::run batch:200 n:714 unresolved:0:: rate:4.07/s avg:245.64ms n:714 elapsed:175.3901s
+::run batch:200 n:714 unresolved:0:: rate:3.93/s avg:254.38ms n:714 elapsed:181.6267s
+
+714 files, 96 MB with move
 ```
 
 ## Queue Operation

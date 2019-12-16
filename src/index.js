@@ -3,9 +3,7 @@ const dataDirs = require('./dataDirs.js')
 const browserSetup = require('./browserSetup')
 const sleep = require('./sleep')
 const perf = require('./perf')
-// const { downloadItems } = require('./flowWorker')
-// const { extractItems } = require('./flowMain')
-const { navToFirst, enterDetailPage, nextDetailPage, shiftD } = require('./flowMain')
+const { navToFirst, enterDetailPage, nextDetailPage, initiateDownload } = require('./flowMain')
 
 const baseURL = 'https://photos.google.com/'
 
@@ -41,12 +39,12 @@ async function main () {
 
   const href = await navToFirst(mainPage)
   if (href) {
-    console.log(`FirstPhoto (href:${href})`)
+    console.log(`FirstPhoto (Album Page): (href:${href})`)
     const url = await enterDetailPage(mainPage)
     // Here we expect url to match href
     if (url === href) {
-      console.log(`FirstPhoto (url:${href})`)
-      await sleep(500)
+      console.log(`FirstPhoto (Detail Page): (url:${href})`)
+      await sleep(500) // why ?
 
       const startRun = perf.now()
       let startBatch = perf.now() // will be reset every batchSize iterations
@@ -57,7 +55,7 @@ async function main () {
       let currentUrl
       let previousUrl
       let sameCount = 0
-      const unresolveds = []
+      const unresolveds = [] // the timed-out initiated downloads
       while (true) {
         currentUrl = mainPage.url()
         if (currentUrl === previousUrl) {
@@ -67,32 +65,17 @@ async function main () {
 
           const id = photoIdFromURL(currentUrl)
           if (id) {
-            const timeout = 5000
-            const [responseHandler, responsePromise] = responseHandlerForId(n, id, timeout)
-            mainPage.on('response', responseHandler)
-
-            await shiftD(mainPage)
-
-            // Promise.race between responsePromise and sleep
-            // let [completed] = await Promise.race(queue.map(p => p.then(res => [p])));
-            const responseWithTimeout = Promise.race([
-              responsePromise,
-              sleep(timeout, { timeout: timeout })
-            ])
-            const firstFinished = await responseWithTimeout
-            if (firstFinished.timeout) {
-              // we should queue up the unresolved responses here, but not the promise, as the handler will be removed.
-              unresolveds.push({ n, id /*, responsePromise */ })
-              console.log(`XX ${n} Response (${id}) was not resolved in ${firstFinished.timeout}ms`)
-            } else { // our response resolved before timeout
-              const { /* id, */ filename /*, url, elapsed */ } = firstFinished
+            const eitherResponseOrTimeout = await initiateDownload(mainPage)
+            if (eitherResponseOrTimeout.timeout) { // the value test for timeout vs download response
+              // n,id are also in the timeoutValue (eitherResponseOrTimeout)
+              unresolveds.push({ n, id })
+              console.log(`XX ${n} Response (${id}) was not resolved in ${eitherResponseOrTimeout.timeout}ms`)
+            } else { // our response resolved before timeout, the download is initiated
+              const { /* id, */ filename /*, url, elapsed */ } = eitherResponseOrTimeout
               // console.log('>>', n, filename, elapsed, id, url.substring(0, 80)) // .substring(27, 57)
-
-              // no need to await, move happens in it's own time.
+              // no need to await, move happens in it's own time. Althoug we might queue them up for waiting on them later
               /* await */ dataDirs.moveDownloadedFile(filename, id, userDownloadDir)
             }
-            //  since the handler is removed, it will not resolve later, better retry
-            mainPage.removeListener('response', responseHandler)
           } else {
             console.log(`Current url does not look like a photo detail page. url:${currentUrl}`)
           }
@@ -147,36 +130,6 @@ async function main () {
   await browser.close()
 }
 
-// Not sure I shoud have the id here
-function responseHandlerForId (n, id, timeout) {
-  // parameter; id is included in closure
-  const start = +new Date()
-  let resolver
-  const responsePromise = new Promise(function (resolve, reject) {
-    resolver = resolve
-  })
-
-  const responseHandler = response => {
-    const url = response._url
-    const headers = response.headers()
-    const contentDisposition = headers['content-disposition']
-    const filename = filenameFromContentDisposition(contentDisposition)
-    const contentLength = headers['content-length']
-    // if (filename && url.includes('usercontent')) {
-    if (filename) {
-      // console.log('>>', filename, contentLength, id, url.substring(27, 57))
-      // could return all the headers
-      const elapsed = +new Date() - start
-      resolver({ n, id, filename, contentLength, url, elapsed })
-      if (elapsed > timeout) {
-        console.log(`** Resolved after ${elapsed}ms > ${timeout}ms (${id}`)
-        console.log(`   url: (${url}`)
-      }
-    }
-  }
-  return [responseHandler, responsePromise]
-}
-
 function photoIdFromURL (url) {
   if (!url) {
     return null
@@ -187,26 +140,6 @@ function photoIdFromURL (url) {
   // console.log({ found })
   if (found.length === 2) {
     return found[1]
-  }
-  return null
-}
-
-function filenameFromContentDisposition (contentDisposition) {
-  if (!contentDisposition) {
-    return null
-  }
-  // tests
-  // attachment;filename="IMG_9487.JPG"
-  // attachment; filename="MVI_5560.AVI"  // notice there can be differing whitespa after the semi-colon
-  // attachment; filename="response.bin"; filename*=UTF-8''response.bin  // should be excluded
-  const re = /attachment;\s*filename="(.*)"$/
-  const found = contentDisposition.match(re)
-  // console.log({ found })
-  if (found && found.length === 2) {
-    return found[1]
-  } else {
-    // for debugging
-    // console.log('Content-Disposition not matched:', contentDisposition)
   }
   return null
 }
