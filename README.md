@@ -5,9 +5,11 @@ Download Google Photos with puppeteer
 ## TODO
 
 - refactor navN
+- optimistic scan (no download) + counts
 - dowload deny?
 - include bandwidth in metrics?
 - yargs headless, num, verify, list, optimistic
+- retry unresolved, with navigation, not page.goto()
 - See also: <https://github.com/daneroo/chromedp-manytabs>
 - `mkdir -p data/workers/n`
 - Manage Windows (n workers)
@@ -28,8 +30,12 @@ Download Google Photos with puppeteer
 ::run n:30387 unresolved:29 elapsed:13958.320s (232 minutes, batchSize=1000)
 ::run batch:200 n:30387 unresolved:50:: rate:2.72 elapsed:11165.720s (186 minutes, batchSize=200)
 ::run batch:200 n:30387 unresolved:87:: rate:2.55/s avg:392.70ms n:30387 elapsed:11933.0139s
+::run batch:200 n:30387 unresolved:25:: rate:2.04/s avg:489.25ms n:30387 elapsed:14866.7884s (with move)
+::run batch:200 n:30387 unresolved:22:: rate:2.85/s avg:351.39ms n:30387 elapsed:10677.7708s
 
-21891 uniqe files..
+
+21891 files..
+30323 files, 28594 MB with move
 ```
 
 ## Queue Operation

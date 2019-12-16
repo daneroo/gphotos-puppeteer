@@ -25,12 +25,14 @@ async function make (basePath = './data') {
 // - the file does not exist until it's download is complete (file.crdownload does)
 // - we are not waiting for this process to complete in the invoker,
 //   so the time is not critical, hence the long tick, and maxIterations
+// max time: maxIteration*tick = 100s.
+// TODO(daneroo): might want to manage a queue of pending operations, and await thm before exit
 async function moveDownloadedFile (filename, id, userDownloadDir) {
   const oldPath = path.join(userDownloadDir, filename)
   const newDir = path.join(userDownloadDir, id)
   const newPath = path.join(userDownloadDir, id, filename)
   const tick = 500 // ms
-  const maxIterations = 100
+  const maxIterations = 200
   let iterations = 0
   let lastError
   const start = perf.now()
@@ -48,7 +50,8 @@ async function moveDownloadedFile (filename, id, userDownloadDir) {
     }
   }
   if (lastError) {
-    console.error(`Error::mv ${filename} to ${newDir} : ${maxIterations} attempts`, lastError)
+    console.error(`Error::mv ${filename} to ${newDir}: ${maxIterations} attempts elapsed:${perf.since(start)}`, lastError)
+  } else {
+    perf.log(`mv ${filename} to ${newDir} ${iterations}`, start, 1)
   }
-  perf.log(`mv ${filename} to ${newDir} ${iterations}`, start, 1)
 }
