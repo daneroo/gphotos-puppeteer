@@ -46,6 +46,9 @@ Download Google Photos with puppeteer
 ::run batch:200 n:714 unresolved:0:: rate:3.76/s avg:266.10ms n:714 elapsed:189.9984s
 ::run batch:200 n:714 unresolved:0:: rate:4.07/s avg:245.64ms n:714 elapsed:175.3901s
 ::run batch:200 n:714 unresolved:0:: rate:3.93/s avg:254.38ms n:714 elapsed:181.6267s
+::run batch:200 n:714 unresolved:2:: rate:3.72/s avg:269.12ms n:714 elapsed:192.1495s
+::run batch:1000 n:714 unresolved:1:: rate:6.37/s avg:157.09ms n:714 elapsed:112.1613s
+::run batch:200 n:714 unresolved:1:: rate:5.81/s avg:172.09ms n:714 elapsed:122.8737s
 
 714 files, 96 MB with move
 ```

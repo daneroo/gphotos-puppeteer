@@ -37,7 +37,7 @@ describe('Queue', () => {
     }
     const consumer = async (item) => {
       await sleep(10)
-      console.log(`setup ${item}`)
+      // console.log(`setup ${item}`)
       return async function () {
         // console.log(`task start ${item}`)
         await sleep(20)
@@ -59,7 +59,7 @@ describe('Queue', () => {
       return async function () {
         // console.log(`task start ${item}`)
         await sleep(20)
-        console.log(`task ${item}`)
+        // console.log(`task ${item}`)
       }
     }
     const assigned = await assign(q, consumer)

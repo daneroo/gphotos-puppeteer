@@ -1,4 +1,6 @@
 const sleep = require('./sleep')
+const perf = require('./perf')
+
 const { downloadHandlerWithTimeout } = require('./handler')
 
 module.exports = {
@@ -47,7 +49,7 @@ async function navToFirst (page, maxDelay = 1000) {
 // return url of detail page: e.g. https://photos.google.com/photo/AF1QipMOl0XXrO9WPSv5muLRBFpbyzGsdnrqUqtF8f73
 // or null if not successful
 // send a single `\n`, and wait for the url to change from origUrl.
-async function enterDetailPage (page, maxDelay = 3000) {
+async function enterDetailPage (page, maxDelay = 5000) {
   const origUrl = page.url()
   // console.log(`..orig url: ${origUrl}`)
   const start = +new Date()
@@ -81,25 +83,50 @@ async function initiateDownload (page, n, id) {
   return eitherResponseOrTimeout
 }
 
-// from the detail page
-// return url of detail page: e.g. https://photos.google.com/photo/AF1QipMOl0XXrO9WPSv5muLRBFpbyzGsdnrqUqtF8f73
-// or null if not successful
-// send a single `navRight`, and wait for the url to change from origUrl.
+// nextDetailPage navigates to the next (navRight) page
+// Return url of detail page: e.g. https://photos.google.com/photo/AF1QipMOl0XXrO9WPSv5muLRBFpbyzGsdnrqUqtF8f73
+//    or null if not successful
+// This was optimized for throughput (to be used for simply iterating all detail pages)
+// 1- Add a listener for 'targetchanged' events, which signify the page has navigated
+//    this listener changes a local variable (`url`) in it's closure
+// 2- We observe this variable in a tight loop, until navigation has occured.
+// 3- Even though the targetchanged event has been sent,
+//    the `page` object has not yet updated it's url(), so we wait fo that to occur
+// The two tight loops (observing the url variable change, and the page.url() value),
+// need a small delay (`miniTick`) so as to complete as fast as possible,
+// but we don't want to pin the cpu and prevent the broser processes to advance
 async function nextDetailPage (page, maxDelay = 3000) {
-  const origUrl = page.url()
-  await sleep(10) // be a good citizen
-  // console.log(`..orig url:       ${origUrl}`)
+  const miniTick = 1 // ms, tight loop but don't lock the process!
+  const browser = page.browser()
 
-  const start = +new Date()
+  let url = null // this variable is bound into the listener closure
+  const listener = t => { url = t.url() }
+
+  // add the listener to the browser
+  browser.on('targetchanged', listener)
+
+  const start = perf.now()
   await navRight(page)
+
+  // wait for the litener to set the `url` variable
   while (true) {
-    await sleep(90) // Needs a better solution...
-    const url = page.url()
-    // console.log(`..current url:    ${url}`)
-    if (url !== origUrl) { return url }
-    const elapsed = +new Date() - start
-    if (elapsed > maxDelay) { return null }
+    await sleep(miniTick)
+    if (url) { break }
+    const elapsed = perf.since(start)
+    if (elapsed > maxDelay) { break }
   }
+
+  // remove the listener
+  browser.removeListener('targetchanged', listener)
+
+  // wait for page.url() to catch up to tagetchanged.url()
+  if (url) { // unless the listener was never triggerd (url==null)
+    while (url !== page.url()) {
+      await sleep(miniTick)
+    }
+  }
+  // perf.log('nextDetailPage', start, 1)
+  return url
 }
 
 // initially for main/album page

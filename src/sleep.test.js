@@ -4,9 +4,9 @@ const sleep = require('./sleep')
 describe('sleep', () => {
   test('simple', async () => {
     const start = +new Date()
-    await sleep(50)
+    await sleep(100)
     const elapsed = +new Date() - start
-    expectInRange(elapsed, 50, 10)
+    expectInRange(elapsed, 100, 10)
   })
 
   function expectInRange (value, expected, range) {

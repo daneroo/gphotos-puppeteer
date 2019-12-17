@@ -39,9 +39,9 @@ async function assign ({ items, inFlight, results }, consumer, numWorkers = 2) {
     for (let unIdx = 0; unIdx < inFlight.length; unIdx++) {
       if (!inFlight[unIdx]) { // found an unassigned slot
         const item = items.shift()
-        console.log(`Found slot at ${unIdx} for item ${item}`)
+        // console.log(`Found slot at ${unIdx} for item ${item}`)
         const task = await consumer(item) // blocking part of consumer
-        // task() return a promise (for non blocking part)
+        // task() returns a promise (for non blocking part)
         inFlight[unIdx] = task() // but do not await
         foundSlot = true
         break

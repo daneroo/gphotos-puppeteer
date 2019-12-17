@@ -46,75 +46,7 @@ async function main () {
       console.log(`FirstPhoto (Detail Page): (url:${href})`)
       await sleep(500) // why ?
 
-      const startRun = perf.now()
-      let startBatch = perf.now() // will be reset every batchSize iterations
-      const batchSize = 200
-      const maxItems = 1e6
-
-      let n = 0
-      let currentUrl
-      let previousUrl
-      let sameCount = 0
-      const unresolveds = [] // the timed-out initiated downloads
-      while (true) {
-        currentUrl = mainPage.url()
-        if (currentUrl === previousUrl) {
-          sameCount++
-        } else {
-          sameCount = 0
-
-          const id = photoIdFromURL(currentUrl)
-          if (id) {
-            const eitherResponseOrTimeout = await initiateDownload(mainPage)
-            if (eitherResponseOrTimeout.timeout) { // the value test for timeout vs download response
-              // n,id are also in the timeoutValue (eitherResponseOrTimeout)
-              unresolveds.push({ n, id })
-              console.log(`XX ${n} Response (${id}) was not resolved in ${eitherResponseOrTimeout.timeout}ms`)
-            } else { // our response resolved before timeout, the download is initiated
-              const { /* id, */ filename /*, url, elapsed */ } = eitherResponseOrTimeout
-              // console.log('>>', n, filename, elapsed, id, url.substring(0, 80)) // .substring(27, 57)
-              // no need to await, move happens in it's own time. Althoug we might queue them up for waiting on them later
-              /* await */ dataDirs.moveDownloadedFile(filename, id, userDownloadDir)
-            }
-          } else {
-            console.log(`Current url does not look like a photo detail page. url:${currentUrl}`)
-          }
-
-          n++
-          if (n % batchSize === 0) {
-            const startReload = perf.now()
-            await mainPage.reload({ waitUntil: ['networkidle0', 'domcontentloaded'] })
-            perf.log(`reload n:${n}`, startReload, 1)
-
-            // also printStats
-            perf.log(`batch batch:${batchSize} n:${n} unresolved:${unresolveds.length}`, startBatch, batchSize)
-            perf.log(`cumul batch:${batchSize} n:${n} unresolved:${unresolveds.length}`, startRun, n)
-            startBatch = perf.now()
-          }
-        }
-
-        if (n > maxItems) {
-          break
-        }
-        if (sameCount > 3) {
-          break
-        }
-
-        const nurl = await nextDetailPage(mainPage)
-        if (!nurl) {
-          console.log(`Looks like nextDetailPage failed: ${nurl}`)
-        }
-        previousUrl = currentUrl
-      }
-      // Now look at the unresolved items
-      console.log(`There were ${unresolveds.length} unresolved items`)
-      for (const unresolved of unresolveds) {
-        const { n, id } = unresolved
-        console.log(` - unresolved ${n} (${id})`)
-      }
-      //  we could check for promises whose handler resolved before it was removed, but...
-
-      perf.log(`run batch:${batchSize} n:${n} unresolved:${unresolveds.length}`, startRun, n)
+      await loopDetailPages(mainPage, userDownloadDir)
     } else {
       console.log('Active href on main does not match detail url')
       console.log(` Main active href: ${href}`)
@@ -128,6 +60,75 @@ async function main () {
 
   console.log('Closing browser')
   await browser.close()
+}
+
+// main loop for detail page
+async function loopDetailPages (page, downloadDir) {
+  const startRun = perf.now()
+  let startBatch = perf.now() // will be reset every batchSize iterations
+  const batchSize = 200 // reoptimize this
+  const maxItems = 1e6
+
+  let n = 0
+  let currentUrl
+  let previousUrl
+  let sameCount = 0
+  const unresolveds = [] // the timed-out initiated downloads
+  while (true) {
+    currentUrl = page.url()
+    if (currentUrl === previousUrl) {
+      sameCount++
+    } else {
+      sameCount = 0
+
+      const id = photoIdFromURL(currentUrl)
+      if (id) {
+        const eitherResponseOrTimeout = await initiateDownload(page, n, id)
+        if (eitherResponseOrTimeout.timeout) { // the value test for timeout vs download response
+          // n,id are also in the timeoutValue (eitherResponseOrTimeout)
+          unresolveds.push({ n, id })
+          console.log(`XX ${n} Response (${id}) was not resolved in ${eitherResponseOrTimeout.timeout}ms`)
+        } else { // our response resolved before timeout, the download is initiated
+          const { /* id, */ filename /*, url, elapsed */ } = eitherResponseOrTimeout
+          // console.log('>>', n, filename, elapsed, id, url.substring(0, 80)) // .substring(27, 57)
+          // no need to await, move happens in it's own time. Althoug we might queue them up for waiting on them later
+          /* await */ dataDirs.moveDownloadedFile(filename, id, downloadDir)
+        }
+      } else {
+        console.log(`Current url does not look like a photo detail page. url:${currentUrl}`)
+      }
+
+      n++
+      if (n % batchSize === 0) {
+        const startReload = perf.now()
+        await page.reload({ waitUntil: ['networkidle0', 'domcontentloaded'] })
+        perf.log(`reload n:${n}`, startReload, 1)
+
+        // also printStats
+        perf.log(`batch batch:${batchSize} n:${n} unresolved:${unresolveds.length}`, startBatch, batchSize)
+        perf.log(`cumul batch:${batchSize} n:${n} unresolved:${unresolveds.length}`, startRun, n)
+        startBatch = perf.now()
+      }
+    }
+
+    if (n > maxItems) { break }
+    if (sameCount > 1) { break }
+
+    const nurl = await nextDetailPage(page)
+    if (!nurl) {
+      console.log(`Looks like nextDetailPage failed: ${nurl}`)
+    }
+    previousUrl = currentUrl
+  }
+  // Now look at the unresolved items
+  console.log(`There were ${unresolveds.length} unresolved items`)
+  for (const unresolved of unresolveds) {
+    const { n, id } = unresolved
+    console.log(` - unresolved ${n} (${id})`)
+  }
+  //  we could check for promises whose handler resolved before it was removed, but...
+
+  perf.log(`run batch:${batchSize} n:${n} unresolved:${unresolveds.length}`, startRun, n)
 }
 
 function photoIdFromURL (url) {

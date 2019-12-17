@@ -27,10 +27,10 @@ async function make (basePath = './data') {
 //   so the time is not critical, hence the long tick, and maxIterations
 // max time: maxIteration*tick = 100s.
 // TODO(daneroo): might want to manage a queue of pending operations, and await thm before exit
-async function moveDownloadedFile (filename, id, userDownloadDir) {
-  const oldPath = path.join(userDownloadDir, filename)
-  const newDir = path.join(userDownloadDir, id)
-  const newPath = path.join(userDownloadDir, id, filename)
+async function moveDownloadedFile (filename, id, downloadDir) {
+  const oldPath = path.join(downloadDir, filename)
+  const newDir = path.join(downloadDir, id)
+  const newPath = path.join(downloadDir, id, filename)
   const tick = 500 // ms
   const maxIterations = 200
   let iterations = 0
