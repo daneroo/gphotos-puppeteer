@@ -4,7 +4,8 @@ Download Google Photos with puppeteer
 
 ## TODO
 
-- refactor navN
+- tune miniTick on goedel+dirac (3)
+- Retry on failed download: XX nnnn Response (AF1Qi...)  was not resolved in 5000ms
 - optimistic scan (no download) + counts
 - dowload deny?
 - include bandwidth in metrics?
@@ -33,6 +34,9 @@ Download Google Photos with puppeteer
 ::run batch:200 n:30387 unresolved:87:: rate:2.55/s avg:392.70ms n:30387 elapsed:11933.0139s
 ::run batch:200 n:30387 unresolved:25:: rate:2.04/s avg:489.25ms n:30387 elapsed:14866.7884s (with move)
 ::run batch:200 n:30387 unresolved:22:: rate:2.85/s avg:351.39ms n:30387 elapsed:10677.7708s
+# new nextDetailPage
+::run batch:200 n:30387 unresolved:43:: rate:2.45/s avg:407.63ms n:30387 elapsed:12386.6491s
+::run batch:200 n:30387 unresolved:47:: rate:3.49/s avg:286.51ms n:30387 elapsed:8706.0997s
 
 
 30323 files, 28594 MB with move
@@ -47,6 +51,7 @@ Download Google Photos with puppeteer
 ::run batch:200 n:714 unresolved:0:: rate:4.07/s avg:245.64ms n:714 elapsed:175.3901s
 ::run batch:200 n:714 unresolved:0:: rate:3.93/s avg:254.38ms n:714 elapsed:181.6267s
 ::run batch:200 n:714 unresolved:2:: rate:3.72/s avg:269.12ms n:714 elapsed:192.1495s
+# new nextDetailPage
 ::run batch:1000 n:714 unresolved:1:: rate:6.37/s avg:157.09ms n:714 elapsed:112.1613s
 ::run batch:200 n:714 unresolved:1:: rate:5.81/s avg:172.09ms n:714 elapsed:122.8737s
 

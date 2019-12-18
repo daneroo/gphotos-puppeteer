@@ -96,7 +96,7 @@ async function initiateDownload (page, n, id) {
 // need a small delay (`miniTick`) so as to complete as fast as possible,
 // but we don't want to pin the cpu and prevent the broser processes to advance
 async function nextDetailPage (page, maxDelay = 3000) {
-  const miniTick = 1 // ms, tight loop but don't lock the process!
+  const miniTick = 3 // ms, tight loop but don't lock the process!
   const browser = page.browser()
 
   let url = null // this variable is bound into the listener closure

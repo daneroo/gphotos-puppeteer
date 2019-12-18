@@ -4,6 +4,7 @@ module.exports = {
   downloadItems
 }
 
+// doanloadItems is deprecated: was meant to coordinate work betweeen multiple worker/window/tabs.
 async function downloadItems (workers, items, doneItems, userDownloadDir) {
   // TODO(daneroo): move this to setup...
   for (let w = 0; w < workers.length; w++) {
