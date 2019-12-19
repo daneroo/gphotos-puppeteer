@@ -4,6 +4,8 @@ Download Google Photos with puppeteer
 
 ## TODO
 
+- Google APIS automation: <https://github.com/asrivas/work-less-do-more>
+- renovate (vs greenkeeper, vs updatr)
 - tune miniTick on goedel+dirac (3)
 - Retry on failed download: XX nnnn Response (AF1Qi...)  was not resolved in 5000ms
 - optimistic scan (no download) + counts
@@ -23,6 +25,22 @@ Download Google Photos with puppeteer
 - Gatsby Site for monitoring, browsing
 - Alternative for listing with Google [Photos Library API](https://developers.google.com/photos/library/reference/rest)
 
+## Starting puppeteer's Chromium manually
+
+One of my accounts does not allow me to log in to google with puppeteer's default options configured, the following invocation was sufficient to create a profile (manually) that could then be re-used with puppeteer's default options:
+
+```bash
+mkdir -p data/user-data-dir
+
+# Minimal:
+/Users/daniel/Code/iMetrical/gphotos-puppeteer/node_modules/puppeteer/.local-chromium/mac-706915/chrome-mac/Chromium.app/Contents/MacOS/Chromium \
+  --no-first-run \
+  --password-store=basic \
+  --use-mock-keychain \
+  --user-data-dir=data/user-data-dir \
+  https://photos.google.com/
+```
+
 ## Stability
 
 ### nojunk (30386 items)
@@ -37,7 +55,9 @@ Download Google Photos with puppeteer
 # new nextDetailPage
 ::run batch:200 n:30387 unresolved:43:: rate:2.45/s avg:407.63ms n:30387 elapsed:12386.6491s
 ::run batch:200 n:30387 unresolved:47:: rate:3.49/s avg:286.51ms n:30387 elapsed:8706.0997s
-
+::run batch:200 n:30387 unresolved:45:: rate:3.07/s avg:325.94ms n:30387 elapsed:9904.2262s
+::run batch:200 n:30387 unresolved:54:: rate:2.59/s avg:386.13ms n:30387 elapsed:11733.3302s
+::run batch:200 n:30387 unresolved:8:: rate:3.58/s avg:279.07ms n:30387 elapsed:8480.0763s
 
 30323 files, 28594 MB with move
 ```
