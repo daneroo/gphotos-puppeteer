@@ -4,24 +4,24 @@ Download Google Photos with puppeteer
 
 ## TODO
 
+- progress: https://www.npmjs.com/package/cli-progress
+- refactor w/wo perkeep
 - Google APIS automation: <https://github.com/asrivas/work-less-do-more>
-- renovate (vs greenkeeper, vs updatr)
 - tune miniTick on goedel+dirac (3)
 - Retry on failed download: XX nnnn Response (AF1Qi...)  was not resolved in 5000ms
 - optimistic scan (no download) + counts
-- dowload deny?
+- download deny?
 - include bandwidth in metrics?
 - yargs headless, num, verify, list, optimistic
 - retry unresolved, with navigation, not page.goto()
 - See also: <https://github.com/daneroo/chromedp-manytabs>
 - `mkdir -p data/workers/n`
 - Manage Windows (n workers)
-- Create Queue (done enqueing,done processing)
-- Downloader (move file, report size, status)
-- CI (github actions), evergreen et all
+- CI (github actions)
+  - renovate (vs greenkeeper, vs updatr)
 - Benchmarks (Queue,Metrics)
 - Multiple Profiles
-- State (DB...)
+- State (DB,downloads,perkeep)
 - Gatsby Site for monitoring, browsing
 - Alternative for listing with Google [Photos Library API](https://developers.google.com/photos/library/reference/rest)
 
@@ -43,6 +43,16 @@ mkdir -p data/user-data-dir
 
 ## Stability
 
+### main (6959 items)
+
+```bash
+on dirac:
+::run batch:200 n:6959 unresolved:31:: rate:2.52/s avg:396.93ms n:6959 elapsed:2762.2221s
+::run batch:200 n:6959 unresolved:33:: rate:2.28/s avg:438.30ms n:6959 elapsed:3050.1437s
+
+6947 files, 15600 MB
+```
+
 ### nojunk (30386 items)
 
 ```bash
@@ -58,6 +68,10 @@ mkdir -p data/user-data-dir
 ::run batch:200 n:30387 unresolved:45:: rate:3.07/s avg:325.94ms n:30387 elapsed:9904.2262s
 ::run batch:200 n:30387 unresolved:54:: rate:2.59/s avg:386.13ms n:30387 elapsed:11733.3302s
 ::run batch:200 n:30387 unresolved:8:: rate:3.58/s avg:279.07ms n:30387 elapsed:8480.0763s
+# with perkeep
+::run batch:200 n:30387 unresolved:80:: rate:2.19/s avg:457.46ms n:30387 elapsed:13900.8981s (actually 34469.192s)
+::run batch:200 n:30387 unresolved:2:: rate:8.96/s avg:111.65ms n:30387 elapsed:3392.6336s
+::run batch:200 n:30387 unresolved:0:: rate:10.18/s avg:98.24ms n:30387 elapsed:2985.1668s
 
 30323 files, 28594 MB with move
 ```

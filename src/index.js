@@ -3,6 +3,7 @@ const dataDirs = require('./dataDirs.js')
 const browserSetup = require('./browserSetup')
 const sleep = require('./sleep')
 const perf = require('./perf')
+const perkeep = require('./perkeep')
 const { navToFirst, enterDetailPage, nextDetailPage, initiateDownload } = require('./flowMain')
 
 const baseURL = 'https://photos.google.com/'
@@ -83,16 +84,21 @@ async function loopDetailPages (page, downloadDir) {
 
       const id = photoIdFromURL(currentUrl)
       if (id) {
-        const eitherResponseOrTimeout = await initiateDownload(page, n, id)
-        if (eitherResponseOrTimeout.timeout) { // the value test for timeout vs download response
-          // n,id are also in the timeoutValue (eitherResponseOrTimeout)
-          unresolveds.push({ n, id })
-          console.log(`XX ${n} Response (${id}) was not resolved in ${eitherResponseOrTimeout.timeout}ms`)
-        } else { // our response resolved before timeout, the download is initiated
-          const { /* id, */ filename /*, url, elapsed */ } = eitherResponseOrTimeout
-          // console.log('>>', n, filename, elapsed, id, url.substring(0, 80)) // .substring(27, 57)
-          // no need to await, move happens in it's own time. Althoug we might queue them up for waiting on them later
-          /* await */ dataDirs.moveDownloadedFile(filename, id, downloadDir)
+        const alreadyExists = await perkeep.exists(id)
+        if (!alreadyExists) {
+          const eitherResponseOrTimeout = await initiateDownload(page, n, id)
+          if (eitherResponseOrTimeout.timeout) { // the value test for timeout vs download response
+            // n,id are also in the timeoutValue (eitherResponseOrTimeout)
+            unresolveds.push({ n, id })
+            console.log(`XX ${n} Response (${id}) was not resolved in ${eitherResponseOrTimeout.timeout}ms`)
+          } else { // our response resolved before timeout, the download is initiated
+            const { /* id, */ filename /*, url, elapsed */ } = eitherResponseOrTimeout
+            // console.log('>>', n, filename, elapsed, id, url.substring(0, 80)) // .substring(27, 57)
+            // no need to await, move happens in it's own time. Althoug we might queue them up for waiting on them later
+            /* await */ dataDirs.moveDownloadedFile(filename, id, downloadDir)
+          }
+        } else {
+          console.log(`photoId (${id}) already exists, skipping`)
         }
       } else {
         console.log(`Current url does not look like a photo detail page. url:${currentUrl}`)
