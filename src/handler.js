@@ -21,7 +21,7 @@ function downloadHandlerWithTimeout (n, id, timeout) {
 }
 
 // downloadHandler returns an [handler,promise]
-// the promise will be resolved in the handler, but care mus be taken for the case where the handler is never invoked, or takes too long
+// the promise will be resolved in the handler, but care must be taken for the case where the handler is never invoked, or takes too long
 // the event handler function, meant to be registered: like this:
 //   const [responseHandler, responsePromise] = downloadHandler(n, id, timeout)
 //   mainPage.on('response', responseHandler)
@@ -43,10 +43,7 @@ function downloadHandler (n, id, timeout) {
     const contentDisposition = headers['content-disposition']
     const filename = filenameFromContentDisposition(contentDisposition)
     const contentLength = headers['content-length']
-    // if (filename && url.includes('usercontent')) {
     if (filename) {
-      // console.log('>>', filename, contentLength, id, url.substring(27, 57))
-      // could return all the headers
       const elapsed = +new Date() - start
       resolver({ n, id, filename, contentLength, url, elapsed })
       if (elapsed > timeout) {
