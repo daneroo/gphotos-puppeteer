@@ -24,6 +24,7 @@
   "homepage": "https://github.com/daneroo/gphotos-puppeteer#readme",
   "dependencies": {
     "async-mutex": "^0.1.4",
+    "cli-progress": "^3.4.0",
     "puppeteer": "^2.0.0",
     "request": "^2.88.0",
     "request-promise-native": "^1.0.8"

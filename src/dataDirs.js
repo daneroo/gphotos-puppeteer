@@ -33,7 +33,7 @@ async function moveDownloadedFile (filename, id, downloadDir) {
   const newPath = path.join(downloadDir, id, filename)
   const tick = 500 // ms
   const maxIterations = 200
-  let iterations = 0
+  // let iterations = 0
   let lastError
   const start = perf.now()
   for (let i = 0; i < maxIterations; i++) {
@@ -43,7 +43,7 @@ async function moveDownloadedFile (filename, id, downloadDir) {
       await fsPromises.mkdir(newDir, { recursive: true })
       await fsPromises.rename(oldPath, newPath)
       lastError = null
-      iterations = i
+      // iterations = i
       break
     } catch (err) {
       lastError = err
@@ -52,6 +52,6 @@ async function moveDownloadedFile (filename, id, downloadDir) {
   if (lastError) {
     console.error(`Error::mv ${filename} to ${newDir}: ${maxIterations} attempts elapsed:${perf.since(start)}`, lastError)
   } else {
-    perf.log(`mv ${filename} to ${newDir} ${iterations}`, start, 1)
+    // perf.log(`mv ${filename} to ${newDir} ${iterations}`, start, 1)
   }
 }

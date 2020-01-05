@@ -1,5 +1,6 @@
 const path = require('path')
 const fs = require('fs')
+const Progress = require('cli-progress')
 const dataDirs = require('./dataDirs.js')
 const perkeep = require('./perkeep')
 const perf = require('./perf')
@@ -55,6 +56,19 @@ async function loopDetailPages (page, downloadDir, mode = modes.listOnly) {
   let startBatch = perf.now() // will be reset every batchSize iterations
   const batchSize = 200 // reoptimize this
   const maxItems = 1e6
+  const progressBar = new Progress.Bar({
+    // format: 'looping [{bar}] {percentage}% | ETA: {eta}s | {value}/{total} : exists:{exists} unresolved:{unresolved}'
+    format: 'looping [{bar}] | n:{value} exists:{exists} unresolved:{unresolved} elapsed:{duration}s reloads:{reloads} rates: batch:{rateBatch} total:{rateTotal}',
+    clearOnComplete: true
+  })
+  const counts = {
+    exists: 0,
+    unresolved: 0,
+    reloads: 0,
+    rateBatch: '-/s',
+    rateTotal: '-/s'
+  }
+  progressBar.start(batchSize, 0, counts)
 
   let n = 0
   let currentUrl
@@ -75,6 +89,7 @@ async function loopDetailPages (page, downloadDir, mode = modes.listOnly) {
           const eitherResponseOrTimeout = await mode.initiateDownload(page, n, id)
           if (eitherResponseOrTimeout.timeout) { // the value test for timeout vs download response
             // n,id are also in the timeoutValue (eitherResponseOrTimeout)
+            counts.unresolved++
             unresolveds.push({ n, id })
             console.log(`XX ${n} Response (${id}) was not resolved in ${eitherResponseOrTimeout.timeout}ms`)
           } else { // our response resolved before timeout, the download is initiated
@@ -85,7 +100,8 @@ async function loopDetailPages (page, downloadDir, mode = modes.listOnly) {
             /* await */ mode.finalizeDownload(filename, id, downloadDir)
           }
         } else {
-          console.log(`photoId (${id}) already exists, skipping`)
+          counts.exists++
+          // console.log(`photoId (${id}) already exists, skipping`)
         }
       } else {
         console.log(`Current url does not look like a photo detail page. url:${currentUrl}`)
@@ -93,15 +109,19 @@ async function loopDetailPages (page, downloadDir, mode = modes.listOnly) {
 
       n++
       if (n % batchSize === 0) {
-        const startReload = perf.now()
-        await page.reload({ waitUntil: ['networkidle0', 'domcontentloaded'] })
-        perf.log(`reload n:${n}`, startReload, 1)
-
+        progressBar.setTotal(n + batchSize)
+        await page.reload({ waitUntil: ['networkidle0', 'domcontentloaded'] }) // about 3s
+        counts.reloads++
+        const { rate: rateBatch } = perf.metrics('batch', startBatch, batchSize)
+        counts.rateBatch = rateBatch.toFixed(2) + '/s'
+        const { rate: rateTotal } = perf.metrics('cumul', startRun, n)
+        counts.rateTotal = rateTotal.toFixed(2) + '/s'
         // also printStats
-        perf.log(`batch batch:${batchSize} n:${n} unresolved:${unresolveds.length}`, startBatch, batchSize)
-        perf.log(`cumul batch:${batchSize} n:${n} unresolved:${unresolveds.length}`, startRun, n)
-        startBatch = perf.now()
+        // perf.log(`batch batch:${batchSize} n:${n} unresolved:${unresolveds.length}`, startBatch, batchSize)
+        // perf.log(`cumul batch:${batchSize} n:${n} unresolved:${unresolveds.length}`, startRun, n)
+        startBatch = perf.now() // reset batch start time
       }
+      progressBar.update(n + 1, counts)
     }
 
     if (n > maxItems) { break }
@@ -109,12 +129,15 @@ async function loopDetailPages (page, downloadDir, mode = modes.listOnly) {
 
     const nurl = await nextDetailPage(page)
     if (!nurl) {
-      console.log(`Looks like nextDetailPage failed: ${nurl}`)
+      // console.log(`Looks like nextDetailPage failed: ${nurl}`)
     }
     previousUrl = currentUrl
   }
+  progressBar.setTotal(n)
+  progressBar.stop()
   // Now look at the unresolved items
-  console.log(`There were ${unresolveds.length} unresolved items`)
+  // console.log(`There were ${unresolveds.length} unresolved items`)
+
   for (const unresolved of unresolveds) {
     const { n, id } = unresolved
     console.log(` - unresolved ${n} (${id})`)

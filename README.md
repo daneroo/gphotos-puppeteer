@@ -4,11 +4,11 @@ Download Google Photos with puppeteer
 
 ## TODO
 
-- progress: <https://www.npmjs.com/package/cli-progress>
+- yargs headless, num, verify, list, optimistic
 - Google APIS automation: <https://github.com/asrivas/work-less-do-more>
+- Multibar progress for downloads -> unresolved
 - Retry on failed download: XX nnnn Response (AF1Qi...)  was not resolved in 5000ms
 - include bandwidth in metrics?
-- yargs headless, num, verify, list, optimistic
 - retry unresolved, with navigation, not page.goto()
 - See also: <https://github.com/daneroo/chromedp-manytabs>
 - `mkdir -p data/workers/n`
