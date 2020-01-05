@@ -12,8 +12,13 @@ async function setup ({ headless = false, numWorkers = 0, userDataDir, userDownl
     userDataDir
   })
   const mainPage = await getFirst(browser)
-  const workers = []
+  await mainPage._client.send('Page.setDownloadBehavior', {
+    behavior: 'allow',
+    downloadPath: userDownloadDir
+  })
+  console.info(`::set dlDir to: ${userDownloadDir}`)
 
+  const workers = []
   for (let w = 0; w < numWorkers; w++) {
     const worker = await pageInNewWindow(browser, mainPage, w)
     workers.push(worker)

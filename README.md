@@ -4,13 +4,9 @@ Download Google Photos with puppeteer
 
 ## TODO
 
-- refactor w/wo perkeep
-- progress: https://www.npmjs.com/package/cli-progress
+- progress: <https://www.npmjs.com/package/cli-progress>
 - Google APIS automation: <https://github.com/asrivas/work-less-do-more>
-- tune miniTick on goedel+dirac (3)
 - Retry on failed download: XX nnnn Response (AF1Qi...)  was not resolved in 5000ms
-- optimistic scan (no download) + counts
-- download deny?
 - include bandwidth in metrics?
 - yargs headless, num, verify, list, optimistic
 - retry unresolved, with navigation, not page.goto()

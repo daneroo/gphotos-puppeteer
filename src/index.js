@@ -1,12 +1,8 @@
 
-const path = require('path')
-const fs = require('fs')
 const dataDirs = require('./dataDirs.js')
 const browserSetup = require('./browserSetup')
 const sleep = require('./sleep')
-const perf = require('./perf')
-const perkeep = require('./perkeep')
-const { navToFirst, enterDetailPage, nextDetailPage, initiateDownload } = require('./flow')
+const { navToFirst, enterDetailPage, loopDetailPages, modes } = require('./flow')
 
 const baseURL = 'https://photos.google.com/'
 
@@ -34,12 +30,6 @@ async function main () {
   await authenticate(mainPage)
   await sleep(1000)
 
-  await mainPage._client.send('Page.setDownloadBehavior', {
-    behavior: 'allow',
-    downloadPath: userDownloadDir
-  })
-  console.log(`  set dlDir to: ${userDownloadDir}`)
-
   // const items = await extractItems(mainPage, 'ArrowRight')
   // const items2 = await extractItems(mainPage, 'ArrowLeft')
 
@@ -52,7 +42,7 @@ async function main () {
       console.log(`FirstPhoto (Detail Page): (url:${href})`)
       await sleep(500) // why ?
 
-      await loopDetailPages(mainPage, userDownloadDir)
+      await loopDetailPages(mainPage, userDownloadDir, modes.files)
     } else {
       console.log('Active href on main does not match detail url')
       console.log(` Main active href: ${href}`)
@@ -66,123 +56,6 @@ async function main () {
 
   console.log('Closing browser')
   await browser.close()
-}
-
-const strategies = {
-  listOnly: {
-    exists: async (id, downloadDir) => true
-  },
-  files: {
-    exists: async (id, downloadDir) => fs.existsSync(path.join(downloadDir, id)),
-    initiateDownload: async (page, n, id) => initiateDownload(page, n, id),
-    finalizeDownload: async (filename, id, downloadDir) => dataDirs.moveDownloadedFile(filename, id, downloadDir)
-  },
-  perkeep: {
-    exists: async (id, downloadDir) => perkeep.exixts(id),
-    initiateDownload: async (page, n, id) => initiateDownload(page, n, id),
-    finalizeDownload: async (filename, id, downloadDir) => {
-      await dataDirs.moveDownloadedFile(filename, id, downloadDir)
-      const newPath = path.join(downloadDir, id, filename)
-
-      // TODO(daneroo): unhandled Rejection>
-      await perkeep.putLocked(newPath, id)
-    }
-  }
-}
-// loopDetailPages is the main loop for detail page iterator
-// - It assumes it is on the first detail page
-// - Iteration advances nextDetailPage() (which return null if failed)
-// - Termination criteria: page.url() is unchanged after 2 iterations (sameCount)
-// iner loop:
-// if alreadyExists(id) -> do nothing
-// if !alreadyExists(id) -> initiateDownload; if !timeout moveDownloadedFile (but dont await)
-// if n%batchSize -> reload, print progress
-async function loopDetailPages (page, downloadDir, strategy = strategies.listOnly) {
-  const startRun = perf.now()
-  let startBatch = perf.now() // will be reset every batchSize iterations
-  const batchSize = 200 // reoptimize this
-  const maxItems = 1e6
-
-  let n = 0
-  let currentUrl
-  let previousUrl
-  let sameCount = 0
-  const unresolveds = [] // the timed-out initiated downloads
-  while (true) {
-    currentUrl = page.url()
-    if (currentUrl === previousUrl) {
-      sameCount++
-    } else {
-      sameCount = 0
-
-      const id = photoIdFromURL(currentUrl)
-      if (id) {
-        const alreadyExists = await strategy.exists(id, downloadDir)
-        if (!alreadyExists) {
-          const eitherResponseOrTimeout = await strategy.initiateDownload(page, n, id)
-          if (eitherResponseOrTimeout.timeout) { // the value test for timeout vs download response
-            // n,id are also in the timeoutValue (eitherResponseOrTimeout)
-            unresolveds.push({ n, id })
-            console.log(`XX ${n} Response (${id}) was not resolved in ${eitherResponseOrTimeout.timeout}ms`)
-          } else { // our response resolved before timeout, the download is initiated
-            const { /* id, */ filename /*, url, elapsed */ } = eitherResponseOrTimeout
-            // console.log('>>', n, filename, elapsed, id, url.substring(0, 80)) // .substring(27, 57)
-            // no need to await, move happens in it's own time. Althoug we might queue them up for waiting on them later
-            // /* await */ dataDirs.moveDownloadedFile(filename, id, downloadDir)
-            /* await */ strategy.finalizeDownload(filename, id, downloadDir)
-          }
-        } else {
-          console.log(`photoId (${id}) already exists, skipping`)
-        }
-      } else {
-        console.log(`Current url does not look like a photo detail page. url:${currentUrl}`)
-      }
-
-      n++
-      if (n % batchSize === 0) {
-        const startReload = perf.now()
-        await page.reload({ waitUntil: ['networkidle0', 'domcontentloaded'] })
-        perf.log(`reload n:${n}`, startReload, 1)
-
-        // also printStats
-        perf.log(`batch batch:${batchSize} n:${n} unresolved:${unresolveds.length}`, startBatch, batchSize)
-        perf.log(`cumul batch:${batchSize} n:${n} unresolved:${unresolveds.length}`, startRun, n)
-        startBatch = perf.now()
-      }
-    }
-
-    if (n > maxItems) { break }
-    if (sameCount > 1) { break }
-
-    const nurl = await nextDetailPage(page)
-    if (!nurl) {
-      console.log(`Looks like nextDetailPage failed: ${nurl}`)
-    }
-    previousUrl = currentUrl
-  }
-  // Now look at the unresolved items
-  console.log(`There were ${unresolveds.length} unresolved items`)
-  for (const unresolved of unresolveds) {
-    const { n, id } = unresolved
-    console.log(` - unresolved ${n} (${id})`)
-  }
-  //  we could check for promises whose handler resolved before it was removed, but...
-
-  perf.log(`run batch:${batchSize} n:${n} unresolved:${unresolveds.length}`, startRun, n)
-}
-
-function photoIdFromURL (url) {
-  if (!url) {
-    return null
-  }
-  // https://photos.google.com/photo/AF1QipMbbciIAZnvYhBJgSHsxsn3-56dpzzx-n7y8RiG
-  const re = /https:\/\/photos.google.com\/photo\/(.*)/
-  const found = url.match(re)
-  // console.log({ found })
-  if (found.length === 2) {
-    return found[1]
-  }
-  return null
 }
 
 // authenticate returns the result of getActiveUser(),
