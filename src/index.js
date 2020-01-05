@@ -6,7 +6,7 @@ const browserSetup = require('./browserSetup')
 const sleep = require('./sleep')
 const perf = require('./perf')
 const perkeep = require('./perkeep')
-const { navToFirst, enterDetailPage, nextDetailPage, initiateDownload } = require('./flowMain')
+const { navToFirst, enterDetailPage, nextDetailPage, initiateDownload } = require('./flow')
 
 const baseURL = 'https://photos.google.com/'
 
