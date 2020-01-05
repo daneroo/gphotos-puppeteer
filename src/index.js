@@ -1,4 +1,6 @@
 
+const path = require('path')
+const fs = require('fs')
 const dataDirs = require('./dataDirs.js')
 const browserSetup = require('./browserSetup')
 const sleep = require('./sleep')
@@ -38,6 +40,9 @@ async function main () {
   })
   console.log(`  set dlDir to: ${userDownloadDir}`)
 
+  // const items = await extractItems(mainPage, 'ArrowRight')
+  // const items2 = await extractItems(mainPage, 'ArrowLeft')
+
   const href = await navToFirst(mainPage)
   if (href) {
     console.log(`FirstPhoto (Album Page): (href:${href})`)
@@ -63,8 +68,36 @@ async function main () {
   await browser.close()
 }
 
-// main loop for detail page
-async function loopDetailPages (page, downloadDir) {
+const strategies = {
+  listOnly: {
+    exists: async (id, downloadDir) => true
+  },
+  files: {
+    exists: async (id, downloadDir) => fs.existsSync(path.join(downloadDir, id)),
+    initiateDownload: async (page, n, id) => initiateDownload(page, n, id),
+    finalizeDownload: async (filename, id, downloadDir) => dataDirs.moveDownloadedFile(filename, id, downloadDir)
+  },
+  perkeep: {
+    exists: async (id, downloadDir) => perkeep.exixts(id),
+    initiateDownload: async (page, n, id) => initiateDownload(page, n, id),
+    finalizeDownload: async (filename, id, downloadDir) => {
+      await dataDirs.moveDownloadedFile(filename, id, downloadDir)
+      const newPath = path.join(downloadDir, id, filename)
+
+      // TODO(daneroo): unhandled Rejection>
+      await perkeep.putLocked(newPath, id)
+    }
+  }
+}
+// loopDetailPages is the main loop for detail page iterator
+// - It assumes it is on the first detail page
+// - Iteration advances nextDetailPage() (which return null if failed)
+// - Termination criteria: page.url() is unchanged after 2 iterations (sameCount)
+// iner loop:
+// if alreadyExists(id) -> do nothing
+// if !alreadyExists(id) -> initiateDownload; if !timeout moveDownloadedFile (but dont await)
+// if n%batchSize -> reload, print progress
+async function loopDetailPages (page, downloadDir, strategy = strategies.listOnly) {
   const startRun = perf.now()
   let startBatch = perf.now() // will be reset every batchSize iterations
   const batchSize = 200 // reoptimize this
@@ -84,9 +117,9 @@ async function loopDetailPages (page, downloadDir) {
 
       const id = photoIdFromURL(currentUrl)
       if (id) {
-        const alreadyExists = await perkeep.exists(id)
+        const alreadyExists = await strategy.exists(id, downloadDir)
         if (!alreadyExists) {
-          const eitherResponseOrTimeout = await initiateDownload(page, n, id)
+          const eitherResponseOrTimeout = await strategy.initiateDownload(page, n, id)
           if (eitherResponseOrTimeout.timeout) { // the value test for timeout vs download response
             // n,id are also in the timeoutValue (eitherResponseOrTimeout)
             unresolveds.push({ n, id })
@@ -95,7 +128,8 @@ async function loopDetailPages (page, downloadDir) {
             const { /* id, */ filename /*, url, elapsed */ } = eitherResponseOrTimeout
             // console.log('>>', n, filename, elapsed, id, url.substring(0, 80)) // .substring(27, 57)
             // no need to await, move happens in it's own time. Althoug we might queue them up for waiting on them later
-            /* await */ dataDirs.moveDownloadedFile(filename, id, downloadDir)
+            // /* await */ dataDirs.moveDownloadedFile(filename, id, downloadDir)
+            /* await */ strategy.finalizeDownload(filename, id, downloadDir)
           }
         } else {
           console.log(`photoId (${id}) already exists, skipping`)

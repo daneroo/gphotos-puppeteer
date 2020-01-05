@@ -15,18 +15,74 @@ module.exports = {
   currentActiveElement
 }
 
-// works on main/Album page
-async function extractItems (page, numItems) {
+// Extract all photo hrefs from Main/Album page
+// TODO(daneroo): ensure first seletion is counted
+// TODO(daneroo): turn this into an iterator?
+// Idea: Use the focusin DOM event to detect that navigation has changed focus to new element
+// Tricky callback structure:
+// 1- page.exposeFunction : define a function in the browser that calls our local callback
+//  - this local callback (backToPuppeteerXXXXX) has a reference to href in its closure, which it mutates
+//  - this local callback is given a unqe name, because it cannot be "UNexposed" or removed,
+//    and this prevents us from calling this functiona second time unless we make the name unique
+// 2- add an event listener for 'focusin' event type (which bubbles up, whereas 'focus' does not)
+//  - the event listener then calls our local backToPuppeteerXXXXX
+//  - the event listener is given a name (window.focusinHandler) so it can be removed later
+// 3- Start the iteration:
+//  - send the navigation key (direction=ArrowRight,ArrowLeft)
+//  - watch the 'href' variable, waiting for the callback to mutaste it's value
+//  - if we are at the end, focus will not change, therefore callback will not be invoked
+//    and so we have a max timeout to detect this situation, maxDelay is set long enough to account
+//    for sometime very long delays and pauses in the browser navigation...
+// 4- remove the listener,...
+async function extractItems (page, direction = 'ArrowRight', maxItems = 1e6, maxDelay = 3000) {
+  let href // ** This variable is bound to the exposed backToPuppeteerXXX() callback
+  let prevHref
   const items = []
-  for (let i = 0; i < numItems; i++) {
-    await page.keyboard.press('ArrowRight')
-    await sleep(100)
-    const activeHrefJSHandle = await page.evaluateHandle(() => document.activeElement.href)
-    const href = await activeHrefJSHandle.jsonValue()
-    console.log(`Current active element href is ${href}`)
-    items.push(href)
+
+  // Looks like this can't be reversed (unexposed)
+  // if we nee to call this twice, generate a unique name for the function
+  const backToPuppeteerName = `backToPuppeteer${+new Date()}`
+  await page.exposeFunction(backToPuppeteerName, innerHref => {
+    href = innerHref
+  })
+  await page.evaluate((backToPuppeteerName) => {
+    // Give this a name so we can remove the listener later
+    window.focusinHandler = e => window[backToPuppeteerName](e.target.href)
+    document.addEventListener('focusin', window.focusinHandler)
+  }, backToPuppeteerName)
+
+  const removeListener = async () => {
+    await page.evaluate(type => {
+      document.removeEventListener('focusin', window.focusinHandler)
+      delete window.focusinHandler
+    })
+    // page.exposeFunction has no inverse
+    // await page.UNexposeFunction(backToPuppeteerName,..)
   }
-  console.log(`Found ${items.length} photos`)
+
+  const miniTick = 3 // ms, tight loop but don't lock the process!
+  const start = perf.now()
+  for (let i = 0; i < maxItems; i++) {
+    href = null // resets every outer iteration - will be set in callback
+    await page.keyboard.press(direction)
+
+    const start = perf.now()
+    while (true) {
+      await sleep(miniTick)
+      const elapsed = perf.since(start)
+      if (elapsed > maxDelay) { break }
+      if (href) { break }
+    }
+    // console.log(`Current active element href is ${href} in ${perf.since(start)}ms`)
+    if (href) {
+      items.push(href)
+    }
+    if (href === prevHref) { break }
+    prevHref = href
+  }
+  perf.log(`Found ${items.length} photos`, start, items.length)
+
+  await removeListener() // remove handlers and function definitions
   return items
 }
 
@@ -94,7 +150,7 @@ async function initiateDownload (page, n, id) {
 //    the `page` object has not yet updated it's url(), so we wait fo that to occur
 // The two tight loops (observing the url variable change, and the page.url() value),
 // need a small delay (`miniTick`) so as to complete as fast as possible,
-// but we don't want to pin the cpu and prevent the broser processes to advance
+// but we don't want to pin the cpu and prevent the browser processes to advance
 async function nextDetailPage (page, maxDelay = 3000) {
   const miniTick = 3 // ms, tight loop but don't lock the process!
   const browser = page.browser()

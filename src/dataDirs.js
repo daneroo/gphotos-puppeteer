@@ -2,7 +2,6 @@ const path = require('path')
 const fsPromises = require('fs').promises
 const perf = require('./perf')
 const sleep = require('./sleep')
-const perkeep = require('./perkeep')
 
 module.exports = {
   make,
@@ -54,7 +53,5 @@ async function moveDownloadedFile (filename, id, downloadDir) {
     console.error(`Error::mv ${filename} to ${newDir}: ${maxIterations} attempts elapsed:${perf.since(start)}`, lastError)
   } else {
     perf.log(`mv ${filename} to ${newDir} ${iterations}`, start, 1)
-    // TODO(daneroo): unhandled Rejection>
-    await perkeep.putLocked(newPath, id)
   }
 }
