@@ -2,7 +2,7 @@
 const dataDirs = require('./dataDirs.js')
 const browserSetup = require('./browserSetup')
 const sleep = require('./sleep')
-const { navToFirst, enterDetailPage, loopDetailPages, modes } = require('./flow')
+const { navToFirstDetailPage, loopDetailPages, modes } = require('./flow')
 
 const baseURL = 'https://photos.google.com/'
 
@@ -33,24 +33,10 @@ async function main () {
   // const items = await extractItems(mainPage, 'ArrowRight')
   // const items2 = await extractItems(mainPage, 'ArrowLeft')
 
-  const href = await navToFirst(mainPage)
-  if (href) {
-    console.log(`FirstPhoto (Album Page): (href:${href})`)
-    const url = await enterDetailPage(mainPage)
-    // Here we expect url to match href
-    if (url === href) {
-      console.log(`FirstPhoto (Detail Page): (url:${href})`)
-      await sleep(500) // why ?
-
-      await loopDetailPages(mainPage, userDownloadDir, modes.files)
-    } else {
-      console.log('Active href on main does not match detail url')
-      console.log(` Main active href: ${href}`)
-      console.log(` Detail url: ${url}`)
-    }
-  } else {
-    console.log('couldn\'t find first photo on main page')
-  }
+  const url = await navToFirstDetailPage(mainPage)
+  console.log(`FirstPhoto (Detail Page): (url:${url})`)
+  // await sleep(500) // why ?
+  await loopDetailPages(mainPage, userDownloadDir, modes.files)
 
   await sleep(3000)
 

@@ -16,7 +16,6 @@ async function setup ({ headless = false, numWorkers = 0, userDataDir, userDownl
     behavior: 'allow',
     downloadPath: userDownloadDir
   })
-  console.info(`::set dlDir to: ${userDownloadDir}`)
 
   const workers = []
   for (let w = 0; w < numWorkers; w++) {

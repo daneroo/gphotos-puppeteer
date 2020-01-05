@@ -33,6 +33,7 @@ module.exports = {
   modes, // just so they can be declared after this export
   loopDetailPages,
   extractItems,
+  navToFirstDetailPage,
   navToFirst,
   enterDetailPage,
   initiateDownload,
@@ -59,7 +60,7 @@ async function loopDetailPages (page, downloadDir, mode = modes.listOnly) {
   const progressBar = new Progress.Bar({
     // format: 'looping [{bar}] {percentage}% | ETA: {eta}s | {value}/{total} : exists:{exists} unresolved:{unresolved}'
     format: 'looping [{bar}] | n:{value} exists:{exists} unresolved:{unresolved} elapsed:{duration}s reloads:{reloads} rates: batch:{rateBatch} total:{rateTotal}',
-    clearOnComplete: true
+    clearOnComplete: false // false is te default
   })
   const counts = {
     exists: 0,
@@ -229,6 +230,23 @@ async function extractItems (page, direction = 'ArrowRight', maxItems = 1e6, max
 
   await removeListener() // remove handlers and function definitions
   return items
+}
+
+// TODO: this is what is meant to be called, generalize first,last
+// Returns (current) url of detail page, Throws if not OK
+async function navToFirstDetailPage (page, maxDelay = 1000) {
+  const href = await navToFirst(page)
+  if (href) {
+    const url = await enterDetailPage(page)
+    // Here we expect url to match href
+    if (url === href) {
+      return url
+    } else {
+      throw new Error(`Active href (${href}) on main page does not match detail page url (${url})`)
+    }
+  } else {
+    throw new Error('navToFirstDetailPage: Couldn\'t find first photo on main page')
+  }
 }
 
 // assumes we are at a fresh album page with no active element
