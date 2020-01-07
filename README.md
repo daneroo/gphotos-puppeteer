@@ -4,6 +4,11 @@ Download Google Photos with puppeteer
 
 ## TODO
 
+- better retries/termination for nextDetailPage in loopDetailPages: try/catch?
+- (firstnewest,lastoldest)
+  - find from Main
+  - iterator on Main/Detail
+- off by one error counts (n, exists) -> persisted,deduped?
 - yargs headless, num, verify, list, optimistic
 - Google APIS automation: <https://github.com/asrivas/work-less-do-more>
 - Multibar progress for downloads -> unresolved

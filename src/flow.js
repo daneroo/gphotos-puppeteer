@@ -111,8 +111,10 @@ async function loopDetailPages (page, downloadDir, mode = modes.listOnly) {
       n++
       if (n % batchSize === 0) {
         progressBar.setTotal(n + batchSize)
-        await page.reload({ waitUntil: ['networkidle0', 'domcontentloaded'] }) // about 3s
+        // const start = perf.now()
+        await page.reload({ waitUntil: ['load'] }) // about 3s
         counts.reloads++
+        // counts.reloads = perf.since(start).toFixed(2) + 'ms'
         const { rate: rateBatch } = perf.metrics('batch', startBatch, batchSize)
         counts.rateBatch = rateBatch.toFixed(2) + '/s'
         const { rate: rateTotal } = perf.metrics('cumul', startRun, n)

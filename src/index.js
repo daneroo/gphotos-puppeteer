@@ -2,7 +2,8 @@
 const dataDirs = require('./dataDirs.js')
 const browserSetup = require('./browserSetup')
 const sleep = require('./sleep')
-const { navToFirstDetailPage, loopDetailPages, modes } = require('./flow')
+// const { navToFirstDetailPage, loopDetailPages, modes } = require('./flow')
+const { extractItems } = require('./rxlist')
 
 const baseURL = 'https://photos.google.com/'
 
@@ -23,22 +24,29 @@ async function main () {
   })
   // console.log(`Found ${workers.length} workers`)
 
-  // browser.on('targetchanged', t => {
-  //   console.log(`>> target change: ${t.url()}`)
-  // })
+  try {
+    // browser.on('targetchanged', t => {
+    //   console.log(`>> target change: ${t.url()}`)
+    // })
 
-  await authenticate(mainPage)
-  await sleep(1000)
+    await authenticate(mainPage)
+    await sleep(1000)
+    // throw new Error('Early')
 
-  // const items = await extractItems(mainPage, 'ArrowRight')
-  // const items2 = await extractItems(mainPage, 'ArrowLeft')
+    for (let i = 0; i < 3; i++) {
+      const items = await extractItems(mainPage, 'ArrowRight')
+      const items2 = await extractItems(mainPage, 'ArrowLeft')
+      await mainPage.reload({ waitUntil: ['load'] }) // about 3s
+    }
+    // const url = await navToFirstDetailPage(mainPage)
+    // console.log(`FirstPhoto (Detail Page): (url:${url})`)
+    // // await sleep(500) // why ?
+    // await loopDetailPages(mainPage, userDownloadDir, modes.files)
 
-  const url = await navToFirstDetailPage(mainPage)
-  console.log(`FirstPhoto (Detail Page): (url:${url})`)
-  // await sleep(500) // why ?
-  await loopDetailPages(mainPage, userDownloadDir, modes.files)
-
-  await sleep(3000)
+    await sleep(3000)
+  } catch (err) {
+    console.error(err)
+  }
 
   console.log('Closing browser')
   await browser.close()
