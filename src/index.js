@@ -2,8 +2,8 @@
 const dataDirs = require('./dataDirs.js')
 const browserSetup = require('./browserSetup')
 const sleep = require('./sleep')
-// const { navToFirstDetailPage, loopDetailPages, modes } = require('./flow')
-const { extractItems } = require('./rxlist')
+const { navToFirstDetailPage, loopDetailPages, modes } = require('./flow')
+// const { extractItems } = require('./rxlist')
 
 const baseURL = 'https://photos.google.com/'
 
@@ -33,15 +33,15 @@ async function main () {
     await sleep(1000)
     // throw new Error('Early')
 
-    for (let i = 0; i < 3; i++) {
-      const items = await extractItems(mainPage, 'ArrowRight')
-      const items2 = await extractItems(mainPage, 'ArrowLeft')
-      await mainPage.reload({ waitUntil: ['load'] }) // about 3s
-    }
-    // const url = await navToFirstDetailPage(mainPage)
-    // console.log(`FirstPhoto (Detail Page): (url:${url})`)
-    // // await sleep(500) // why ?
-    // await loopDetailPages(mainPage, userDownloadDir, modes.files)
+    // for (let i = 0; i < 3; i++) {
+    //   const items = await extractItems(mainPage, 'ArrowRight')
+    //   const items2 = await extractItems(mainPage, 'ArrowLeft')
+    //   await mainPage.reload({ waitUntil: ['load'] }) // about 3s
+    // }
+    const url = await navToFirstDetailPage(mainPage)
+    console.log(`FirstPhoto (Detail Page): (url:${url})`)
+    // await sleep(500) // why ?
+    await loopDetailPages(mainPage, userDownloadDir, modes.files)
 
     await sleep(3000)
   } catch (err) {
