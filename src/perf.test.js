@@ -22,7 +22,7 @@ describe('perf vs Date()', () => {
     expect(ignoredStart).toBeGreaterThan(0) // for linter
     expect(dateElapsed).toBeGreaterThanOrEqual(perfElapsed)
   })
-  test('`+new Date()-start` Slower than `perf.now()-start`', async () => {
+  test.skip('flaky `+new Date()-start` Slower than `perf.now()-start`', async () => {
     const iterations = 100
 
     let ignoredStart = +new Date()
@@ -47,7 +47,7 @@ describe('perf vs Date()', () => {
   })
 
   // this is unexpected because there is an extra function call in .since()
-  test('`perf.now()-start` Slower than `perf.since(start)`', async () => {
+  test.skip('flaky: `perf.now()-start` Slower than `perf.since(start)`', async () => {
     const iterations = 100
 
     let ignoredStart = +new Date()
