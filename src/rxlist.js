@@ -5,18 +5,18 @@ const perf = require('./perf')
 const resolvable = require('./resolvable')
 
 module.exports = {
-  extractItems
+  listMain
 }
 
 // Extract all photo hrefs from Main/Album page
 // TODO(daneroo): ensure first seletion is counted
 // TODO(daneroo): turn this into an iterator?
 // Idea: Use the focusin DOM event to detect that navigation has changed focus to new element
-async function extractItems (page, direction = 'ArrowRight', maxDelay = 3000) {
+async function listMain (page, direction = 'ArrowRight', maxDelay = 3000) {
   const items = []
   const { subject, tearDown } = await setupFocusListener(page)
 
-  const pb = pbOps(`extractItems ${direction}`)
+  const pb = pbOps(`Album Page ${direction}`)
   pb.start()
 
   const start = perf.now()
