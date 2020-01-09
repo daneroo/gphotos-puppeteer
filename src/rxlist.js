@@ -12,82 +12,103 @@ module.exports = {
 // TODO(daneroo): ensure first seletion is counted
 // TODO(daneroo): turn this into an iterator?
 // Idea: Use the focusin DOM event to detect that navigation has changed focus to new element
-async function extractItems (page, direction = 'ArrowRight', maxItems = 1e6, maxDelay = 3000) {
+async function extractItems (page, direction = 'ArrowRight', maxDelay = 3000) {
   const items = []
   const { subject, tearDown } = await setupFocusListener(page)
 
-  const progressBar = new Progress.Bar({
-    format: `extractItems ${direction} [{bar}] | n:{value} rate:{rate}/s elapsed:{duration}s retry:{retry} : {href}`
-  })
-  progressBar.start(1000, 0, {
-    rate: '--/s',
-    elapsed: '--s',
-    retry: [0, 0],
-    href: 'AF1Qip...'
-  })
+  const pb = pbOps(`extractItems ${direction}`)
+  pb.start()
 
   const start = perf.now()
 
-  let retriedAt = [] // how about consecutive retries (timeouts).
-  // break on retriedAt.filter(x => x === items.length) > 2
-  while (true) {
-    const { promise, resolver } = resolvable()
-    const sbs = subject
-      .pipe(
-        tap(href => { // accumutate items as a side effect
-          items.push(href)
-        }),
-        tap(href => { // report/log rate
-          pbUpdate(progressBar, start, items, retriedAt)
-          if (items.length > progressBar.getTotal()) {
-            progressBar.setTotal(progressBar.getTotal() + 1000)
-          }
-        }),
-        timeout(maxDelay)
-      )
-      .subscribe({
-        next: async (href) => { // can href be null?
-          // propagate event chain!
-          await page.keyboard.press(direction)
-        },
-        error: async (e) => { // timeout
-          retriedAt.push(items.length)
-          pbUpdate(progressBar, start, items, retriedAt)
-          resolver() // can only be timeout,so we are done
-        }
-      })
-
-    // initiate the event chain!
+  let consecutiveRetries = 0 // how about consecutive retries (timeouts).
+  function syncUpdate (href) {
+    items.push(href)
+    pb.update(start, items, consecutiveRetries)
+  }
+  async function onNext () {
     await page.keyboard.press(direction)
+  }
 
-    await promise // resoved on timeout
-    sbs.unsubscribe()
-
-    // consecutive timeouts: how many times is items.length at the end of the retried array?
-    retriedAt = retriedAt.filter(x => x === items.length)
-    if (retriedAt.length > 2) {
+  while (true) {
+    const count = await oneLoopUntilTimeout(maxDelay, subject, syncUpdate, onNext)
+    if (count === 0) {
+      consecutiveRetries++
+    } else {
+      consecutiveRetries = 0
+    }
+    pb.update(start, items, consecutiveRetries)
+    if (consecutiveRetries > 2) {
       break
     }
   }
-  progressBar.setTotal(items.length)
-  pbUpdate(progressBar, start, items, retriedAt)
-  progressBar.stop()
-  perf.log(`Found ${items.length} photos (${direction}) |${JSON.stringify(retriedAt)}|:${retriedAt.filter(x => x === items.length).length}`, start, items.length)
-  // console.log(retriedAt.filter(x => x === items.length).length)
+  pb.stop(start, items, consecutiveRetries)
+  // perf.log(`Found ${items.length} photos (${direction}) retries:${consecutiveRetries}`, start, items.length)
 
   await tearDown() // remove handlers and function definitions
   return items // maybe this should be an iterator
 }
 
-// extracted common code to update progressbar - this should all be externalized
-function pbUpdate (progressBar, start, items, retriedAt, href) {
-  const { rate } = perf.metrics('extractItems', start, items.length)
-  progressBar.update(items.length, {
-    rate: rate.toFixed(2),
-    elapsed: (perf.since(start) / 1000).toFixed(2),
-    retry: JSON.stringify(retriedAt),
-    href: (items[items.length - 1]).split('/').slice(-1)
+// perform iteration, calling syncUpdate(href), until timeout, return count
+// TODO(daneroo): early return if other condition? perHaps onNext could return done?
+async function oneLoopUntilTimeout (maxDelay = 3000, subject, syncUpdate, onNext) {
+  const { promise, resolver } = resolvable()
+  let count = 0
+  const sbs = subject
+    .pipe(
+      tap(syncUpdate),
+      timeout(maxDelay)
+    )
+    .subscribe({
+      next: async (href) => { // can href be null?
+        count++
+        // propagate event chain! (should cause subject.next(href))
+        await onNext()
+      },
+      error: async (e) => { // timeout
+        resolver() // can only be timeout,so we are done
+      }
+    })
+
+  await onNext() // initiate the event chain!
+  await promise // resolved on timeout
+  sbs.unsubscribe()
+  return count
+}
+
+function pbOps (name) {
+  const progressBar = new Progress.Bar({
+    format: `${name} [{bar}] | n:{value} rate:{rate}/s elapsed:{duration}s retry:{retry} : {href}`
   })
+  const update = (start, items, retries) => {
+    const { rate } = perf.metrics('extractItems', start, items.length)
+    if (items.length > progressBar.getTotal()) {
+      progressBar.setTotal(progressBar.getTotal() + 1000)
+    }
+    const href = (items.length === 0) ? '--' : (items[items.length - 1]).split('/').slice(-1)
+    progressBar.update(items.length, {
+      rate: rate.toFixed(2),
+      elapsed: (perf.since(start) / 1000).toFixed(2),
+      retry: retries,
+      href
+    })
+  }
+  return {
+    start: function () {
+      progressBar.start(1000, 0, {
+        rate: '--/s',
+        elapsed: '--s',
+        retry: [0, 0],
+        href: 'AF1Qip...'
+      })
+    },
+    update,
+    stop: function (start, items, retries) {
+      progressBar.setTotal(items.length)
+      update(start, items, retries)
+      progressBar.stop()
+    }
+  }
 }
 
 // setupFocusListener sets up a local listener for focusin events
