@@ -13,7 +13,7 @@ module.exports = {
 // TODO(daneroo): ensure first seletion is counted
 // TODO(daneroo): turn this into an iterator?
 // Idea: Use the focusin DOM event to detect that navigation has changed focus to new element
-async function listMain (page, direction = 'ArrowRight', maxDelay = 3000) {
+async function listMain (page, direction = 'ArrowRight', maxDelay = 3000, maxConsecutiveZeroCounts = 2) {
   const { subject, tearDown } = await setupFocusListener(page)
 
   const pb = pbOps('Album Page', direction)
@@ -31,7 +31,6 @@ async function listMain (page, direction = 'ArrowRight', maxDelay = 3000) {
     await page.keyboard.press(direction)
   }
 
-  const maxConsecutiveZeroCounts = 2
   const extra = await nLoopsUntilConsecutiveZeroCounts(maxConsecutiveZeroCounts, maxDelay, subject, onItem, onNext, onLoop)
 
   pb.stop(items, extra)
