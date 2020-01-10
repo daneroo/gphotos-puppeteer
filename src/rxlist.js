@@ -5,7 +5,8 @@ const perf = require('./perf')
 const resolvable = require('./resolvable')
 
 module.exports = {
-  listMain
+  listMain,
+  oneLoopUntilTimeout
 }
 
 // Extract all photo hrefs from Main/Album page
@@ -13,50 +14,69 @@ module.exports = {
 // TODO(daneroo): turn this into an iterator?
 // Idea: Use the focusin DOM event to detect that navigation has changed focus to new element
 async function listMain (page, direction = 'ArrowRight', maxDelay = 3000) {
-  const items = []
   const { subject, tearDown } = await setupFocusListener(page)
 
-  const pb = pbOps(`Album Page ${direction}`)
+  const pb = pbOps('Album Page', direction)
   pb.start()
 
-  const start = perf.now()
-
-  let consecutiveRetries = 0 // how about consecutive retries (timeouts).
-  function syncUpdate (href) {
+  const items = []
+  function onItem (href) {
     items.push(href)
-    pb.update(start, items, consecutiveRetries)
+    pb.update(items)
+  }
+  function onLoop (extra) {
+    pb.update(items, extra)
   }
   async function onNext () {
     await page.keyboard.press(direction)
   }
 
-  while (true) {
-    const count = await oneLoopUntilTimeout(maxDelay, subject, syncUpdate, onNext)
-    if (count === 0) {
-      consecutiveRetries++
-    } else {
-      consecutiveRetries = 0
-    }
-    pb.update(start, items, consecutiveRetries)
-    if (consecutiveRetries > 2) {
-      break
-    }
-  }
-  pb.stop(start, items, consecutiveRetries)
-  // perf.log(`Found ${items.length} photos (${direction}) retries:${consecutiveRetries}`, start, items.length)
+  const maxConsecutiveZeroCounts = 2
+  const extra = await nLoopsUntilConsecutiveZeroCounts(maxConsecutiveZeroCounts, maxDelay, subject, onItem, onNext, onLoop)
+
+  pb.stop(items, extra)
+  // perf.log(`Found ${items.length} photos (${direction}) timeouts:${consecutiveZeroCounts}`, start, items.length)
 
   await tearDown() // remove handlers and function definitions
   return items // maybe this should be an iterator
 }
 
-// perform iteration, calling syncUpdate(href), until timeout, return count
-// TODO(daneroo): early return if other condition? perHaps onNext could return done?
-async function oneLoopUntilTimeout (maxDelay = 3000, subject, syncUpdate, onNext) {
+async function nLoopsUntilConsecutiveZeroCounts (maxConsecutiveZeroCounts = 2, maxDelay = 3000, subject, onItem, onNext, onLoop) {
+  let totalCount = 0
+  let loops = 0
+  let consecutiveZeroCounts = 0
+  while (true) {
+    const count = await oneLoopUntilTimeout(maxDelay, subject, onItem, onNext)
+    totalCount += count
+    loops++
+    if (count === 0) {
+      consecutiveZeroCounts++
+    } else {
+      consecutiveZeroCounts = 0
+    }
+    onLoop({ consecutiveZeroCounts, loops, count })
+    if (consecutiveZeroCounts >= maxConsecutiveZeroCounts) {
+      break
+    }
+  }
+  return {
+    count: totalCount,
+    consecutiveZeroCounts,
+    loops
+  }
+}
+
+// perform iteration, calling `onItem(href)` with every item, until timeout(maxDelay),
+//  also call `await onNext()` after each observed href
+//  the iteration is started by calling `await onNext()`
+//  return count
+// TODO(daneroo): early return if other condition? perhaps onNext could return done?
+async function oneLoopUntilTimeout (maxDelay = 3000, subject, onItem, onNext) {
   const { promise, resolver } = resolvable()
   let count = 0
   const sbs = subject
     .pipe(
-      tap(syncUpdate),
+      tap(onItem),
       timeout(maxDelay)
     )
     .subscribe({
@@ -76,36 +96,43 @@ async function oneLoopUntilTimeout (maxDelay = 3000, subject, syncUpdate, onNext
   return count
 }
 
-function pbOps (name) {
+function pbOps (name, direction) {
+  const start = perf.now()
   const progressBar = new Progress.Bar({
-    format: `${name} [{bar}] | n:{value} rate:{rate}/s elapsed:{duration}s retry:{retry} : {href}`
+    format: `${name} [{bar}] | n:{value} direction:{direction} rate:{rate}/s elapsed:{elapsed}s consecutiveZeroCounts:{consecutiveZeroCounts} loops:{loops} count:{count} id:{href}`
   })
-  const update = (start, items, retries) => {
+  let payload = {
+    direction,
+    rate: '--',
+    elapsed: '--',
+    consecutiveZeroCounts: 0,
+    href: 'AF1Qip...',
+    loops: 0,
+    count: '-'
+  }
+  const update = (items, extra) => {
     const { rate } = perf.metrics('extractItems', start, items.length)
     if (items.length > progressBar.getTotal()) {
       progressBar.setTotal(progressBar.getTotal() + 1000)
     }
     const href = (items.length === 0) ? '--' : (items[items.length - 1]).split('/').slice(-1)
-    progressBar.update(items.length, {
+    payload = {
+      ...payload,
       rate: rate.toFixed(2),
       elapsed: (perf.since(start) / 1000).toFixed(2),
-      retry: retries,
-      href
-    })
+      href,
+      ...extra
+    }
+    progressBar.update(items.length, payload)
   }
   return {
     start: function () {
-      progressBar.start(1000, 0, {
-        rate: '--/s',
-        elapsed: '--s',
-        retry: [0, 0],
-        href: 'AF1Qip...'
-      })
+      progressBar.start(1000, 0, payload)
     },
     update,
-    stop: function (start, items, retries) {
+    stop: function (items, extra) {
       progressBar.setTotal(items.length)
-      update(start, items, retries)
+      update(items, extra)
       progressBar.stop()
     }
   }

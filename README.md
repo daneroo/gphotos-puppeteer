@@ -9,6 +9,7 @@ Download Google Photos with puppeteer
   - find from Main
   - iterator on Main/Detail
 - off by one error counts (n, exists) -> persisted,deduped?
+- explore <https://github.com/Qard/channel-surfer> as well as RxJS Subject - for Go architecture..
 - yargs headless, num, verify, list, optimistic
 - Google APIS automation: <https://github.com/asrivas/work-less-do-more>
 - Multibar progress for downloads -> unresolved
