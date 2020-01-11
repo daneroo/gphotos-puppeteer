@@ -4,7 +4,8 @@ Download Google Photos with puppeteer
 
 ## TODO
 
-- better retries/termination for nextDetailPage in loopDetailPages: try/catch?
+- finish flow->rxlist->flow
+- position First,Last, EnterDetail
 - (firstnewest,lastoldest)
   - find from Main
   - iterator on Main/Detail
