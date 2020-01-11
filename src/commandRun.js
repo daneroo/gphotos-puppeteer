@@ -1,7 +1,7 @@
 
 const browserSetup = require('./browserSetup')
 const { authenticate, baseURL } = require('./authenticate')
-const { listMain } = require('./rxlist')
+const { listDetail, listAlbum } = require('./rxlist')
 const { navToFirstDetailPage, loopDetailPages, modeNames } = require('./flow')
 
 module.exports = {
@@ -14,7 +14,7 @@ module.exports = {
           alias: 'm',
           default: 'list',
           describe: 'which mode to use while traversing items',
-          choices: ['listMain', ...modeNames()]
+          choices: ['listAlbum', 'listDetail', ...modeNames()]
         },
         direction: {
           alias: 'd',
@@ -49,9 +49,17 @@ async function handler (argv) {
     console.log(`Authenticated as ${name} (${userId || ''})`)
 
     for (let i = 0; i < 2; i++) {
-      if (mode === 'listMain') {
+      if (mode === 'listAlbum') {
         await mainPage.reload({ waitUntil: ['load'] })
-        await listMain(mainPage, direction)
+        await listAlbum(mainPage, direction)
+      } else if (mode === 'listDetail') {
+        // const last = 'https://photos.google.com/photo/AF1QipPH5vnIJzbiPCXCNxtE3ZmpUJLeHL4VTmrcM57J'
+        // await mainPage.goto(last, { waitUntil: ['load'] })
+        // console.log(`LastPhotoPhoto (Detail Page): (url:${last})`)
+        await mainPage.goto(baseURL, { waitUntil: ['load'] })
+        const url = await navToFirstDetailPage(mainPage)
+        console.log(`FirstPhoto (Detail Page): (url:${url})`)
+        await listDetail(mainPage, direction)
       } else {
         await mainPage.goto(baseURL, { waitUntil: ['load'] })
         const url = await navToFirstDetailPage(mainPage)

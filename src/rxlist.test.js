@@ -1,16 +1,73 @@
 
 const { Subject } = require('rxjs')
 const { timeout, tap } = require('rxjs/operators')
-const { oneLoopUntilTimeout } = require('./rxlist')
+const { oneLoopUntilTimeout, nLoopsUntilConsecutiveZeroCounts } = require('./rxlist')
 const sleep = require('./sleep')
 
 describe('RxList', () => {
+  test.each([
+    [0, [0]],
+    [1, [0, 2]],
+    [2, [0, 2, 5]],
+    [3, [0, 2, 5, 9]]
+  ])('nLoopsUntilConsecutiveZeroCounts maxCZC:%i', async (maxConsecutiveZeroCounts, expected) => {
+    const maxDelay = 10
+    const subject = new Subject()// ** This variable is bound to the exposed backToPuppeteerXXX() callback
+    const items = []
+    async function onItem (href) {
+      // await sleep(maxDelay / 4)
+      items.push(href)
+    }
+
+    const snd = true
+    const skp = false
+    const sendOrSkip = [snd, skp, snd, skp, skp, snd, skp, skp, skp, snd, skp, skp, skp, skp]
+
+    let nextId = -1
+    const onNext = async () => {
+      nextId++
+      const send = sendOrSkip[nextId % sendOrSkip.length]
+      if (send) {
+        await sleep(maxDelay / 2)
+        subject.next(nextId)
+      }
+    }
+
+    const onLoop = (extra) => { }
+    await nLoopsUntilConsecutiveZeroCounts(maxConsecutiveZeroCounts, maxDelay, subject, onItem, onNext, onLoop)
+
+    // expect(items).toEqual([0])
+    // expect(items).toEqual([0, 2])
+    // expect(items).toEqual([0, 2, 5])
+    expect(items).toEqual(expected)
+  })
+  test('oneLoopUntilTimeout (with async onItem)', async () => {
+    const maxDelay = 10
+    const subject = new Subject()// ** This variable is bound to the exposed backToPuppeteerXXX() callback
+    const items = []
+    async function onItem (href) {
+      await sleep(maxDelay / 4)
+      items.push(href)
+    }
+    const s = maxDelay / 2
+    const b = maxDelay * 2
+    const delays = [s, s, s, b]
+    let nextId = 0
+    const onNext = async () => {
+      const d = delays[nextId % delays.length]
+      await sleep(d)
+      nextId++
+      subject.next(nextId)
+    }
+    await oneLoopUntilTimeout(maxDelay, subject, onItem, onNext)
+    expect(items).toEqual([1, 2, 3])
+  })
   test('oneLoopUntilTimeout', async () => {
     let nextId = 0
     const maxDelay = 10
     const subject = new Subject()// ** This variable is bound to the exposed backToPuppeteerXXX() callback
     const items = []
-    function syncUpdate (href) {
+    function onItem (href) {
       items.push(href)
     }
     const onNext = async () => {
@@ -22,7 +79,7 @@ describe('RxList', () => {
       }
       subject.next(nextId)
     }
-    await oneLoopUntilTimeout(maxDelay, subject, syncUpdate, onNext)
+    await oneLoopUntilTimeout(maxDelay, subject, onItem, onNext)
     expect(items).toEqual([1, 2, 3])
   })
   test('externalPage action pattern with timeout', async () => {

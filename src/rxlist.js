@@ -1,31 +1,90 @@
 const Progress = require('cli-progress')
 const { Subject } = require('rxjs')
-const { timeout, tap } = require('rxjs/operators')
+const { timeout } = require('rxjs/operators')
 const perf = require('./perf')
 const resolvable = require('./resolvable')
+const sleep = require('./sleep')
 
 module.exports = {
-  listMain,
+  listDetail,
+  listAlbum,
+  nLoopsUntilConsecutiveZeroCounts,
   oneLoopUntilTimeout
+}
+
+async function listDetail (page, direction = 'ArrowRight', maxDelay = 3000, maxConsecutiveZeroCounts = 2, reloadBatchSize = 200) {
+  async function setupTargetChangedListener (page) {
+    const subject = new Subject()
+    const listener = t => {
+      const url = t.url()
+      if (url) {
+        subject.next(url)
+      }
+    }
+    // add the listener to the browser
+    const browser = page.browser()
+    browser.on('targetchanged', listener)
+    const tearDown = async () => {
+      // remove the listener - seems to be synchronous
+      browser.removeListener('targetchanged', listener)
+    }
+    return {
+      subject,
+      tearDown
+    }
+  }
+  const { subject, tearDown } = await setupTargetChangedListener(page)
+
+  const pb = pbOps('Detail List', direction)
+  pb.start()
+
+  // rewrite pb.update so we don't need to accumulate items..
+  let items = 0
+  async function onItem (href) {
+    // wait for page.url() to catch up to tagetchanged.url()
+    const miniTick = 3 // ms, tight loop but don't lock the process!
+    while (href !== page.url()) {
+      await sleep(miniTick)
+    }
+    if (items % reloadBatchSize === 0) {
+      await page.reload({ waitUntil: ['load'] })
+      // counts.reloads++
+    }
+    items++
+    pb.update(items, { href })
+  }
+  function onLoop (extra) {
+    pb.update(extra.count, extra)
+  }
+  async function onNext () {
+    await page.keyboard.press(direction)
+  }
+
+  const extra = await nLoopsUntilConsecutiveZeroCounts(maxConsecutiveZeroCounts, maxDelay, subject, onItem, onNext, onLoop)
+  pb.stop(extra.count, extra)
+  // perf.log(`Found ${items.length} photos (${direction}) timeouts:${consecutiveZeroCounts}`, start, items.length)
+
+  await tearDown() // remove handlers and function definitions
 }
 
 // Extract all photo hrefs from Main/Album page
 // TODO(daneroo): ensure first seletion is counted
 // TODO(daneroo): turn this into an iterator?
 // Idea: Use the focusin DOM event to detect that navigation has changed focus to new element
-async function listMain (page, direction = 'ArrowRight', maxDelay = 3000, maxConsecutiveZeroCounts = 2) {
+async function listAlbum (page, direction = 'ArrowRight', maxDelay = 3000, maxConsecutiveZeroCounts = 2) {
   const { subject, tearDown } = await setupFocusListener(page)
 
-  const pb = pbOps('Album Page', direction)
+  const pb = pbOps('Album List', direction)
   pb.start()
 
-  const items = []
-  function onItem (href) {
-    items.push(href)
-    pb.update(items)
+  // rewrite pb.update so we don't need to accumulate items..
+  let items = 0
+  async function onItem (href) {
+    items++
+    pb.update(items, { href })
   }
   function onLoop (extra) {
-    pb.update(items, extra)
+    pb.update(extra.count, extra)
   }
   async function onNext () {
     await page.keyboard.press(direction)
@@ -33,33 +92,32 @@ async function listMain (page, direction = 'ArrowRight', maxDelay = 3000, maxCon
 
   const extra = await nLoopsUntilConsecutiveZeroCounts(maxConsecutiveZeroCounts, maxDelay, subject, onItem, onNext, onLoop)
 
-  pb.stop(items, extra)
+  pb.stop(extra.count, extra)
   // perf.log(`Found ${items.length} photos (${direction}) timeouts:${consecutiveZeroCounts}`, start, items.length)
 
   await tearDown() // remove handlers and function definitions
-  return items // maybe this should be an iterator
 }
 
 async function nLoopsUntilConsecutiveZeroCounts (maxConsecutiveZeroCounts = 2, maxDelay = 3000, subject, onItem, onNext, onLoop) {
-  let totalCount = 0
+  let count = 0
   let loops = 0
   let consecutiveZeroCounts = 0
   while (true) {
-    const count = await oneLoopUntilTimeout(maxDelay, subject, onItem, onNext)
-    totalCount += count
+    const loopCount = await oneLoopUntilTimeout(maxDelay, subject, onItem, onNext)
+    count += loopCount
     loops++
-    if (count === 0) {
+    if (loopCount === 0) {
       consecutiveZeroCounts++
     } else {
       consecutiveZeroCounts = 0
     }
-    onLoop({ consecutiveZeroCounts, loops, count })
+    await onLoop({ count, consecutiveZeroCounts, loops, loopCount })
     if (consecutiveZeroCounts >= maxConsecutiveZeroCounts) {
       break
     }
   }
   return {
-    count: totalCount,
+    count,
     consecutiveZeroCounts,
     loops
   }
@@ -75,12 +133,14 @@ async function oneLoopUntilTimeout (maxDelay = 3000, subject, onItem, onNext) {
   let count = 0
   const sbs = subject
     .pipe(
-      tap(onItem),
+      // tap(onItem), // moved to subscribe.next below to make it async
       timeout(maxDelay)
     )
     .subscribe({
       next: async (href) => { // can href be null?
         count++
+        await onItem(href)
+        // await sleep(100)
         // propagate event chain! (should cause subject.next(href))
         await onNext()
       },
@@ -98,40 +158,43 @@ async function oneLoopUntilTimeout (maxDelay = 3000, subject, onItem, onNext) {
 function pbOps (name, direction) {
   const start = perf.now()
   const progressBar = new Progress.Bar({
-    format: `${name} [{bar}] | n:{value} direction:{direction} rate:{rate}/s elapsed:{elapsed}s consecutiveZeroCounts:{consecutiveZeroCounts} loops:{loops} count:{count} id:{href}`
+    format: `${name} [{bar}] | n:{value} direction:{direction} rate:{rate}/s elapsed:{elapsed}s id:{id}`
+    // to debug loop stuff
+    // format: `${name} [{bar}] | n:{value} direction:{direction} rate:{rate}/s elapsed:{elapsed}s  id:{id} loop[consecZCounts:{consecutiveZeroCounts} loops:{loops} loopCount:{loopCount} count:{count}]`
   })
   let payload = {
     direction,
     rate: '--',
     elapsed: '--',
-    consecutiveZeroCounts: 0,
-    href: 'AF1Qip...',
+    id: 'AF1Qip...',
     loops: 0,
+    consecutiveZeroCounts: 0,
+    loopCount: 0,
     count: '-'
   }
-  const update = (items, extra) => {
-    const { rate } = perf.metrics('extractItems', start, items.length)
-    if (items.length > progressBar.getTotal()) {
+  const update = (count, extra) => {
+    const { rate } = perf.metrics('extractItems', start, count)
+    if (count > progressBar.getTotal()) {
       progressBar.setTotal(progressBar.getTotal() + 1000)
     }
-    const href = (items.length === 0) ? '--' : (items[items.length - 1]).split('/').slice(-1)
+    const id = (extra && extra.href) ? { id: (extra.href).split('/').slice(-1) } : {}
     payload = {
       ...payload,
       rate: rate.toFixed(2),
       elapsed: (perf.since(start) / 1000).toFixed(2),
-      href,
+      ...id,
       ...extra
     }
-    progressBar.update(items.length, payload)
+    progressBar.update(count, payload)
   }
   return {
     start: function () {
       progressBar.start(1000, 0, payload)
     },
     update,
-    stop: function (items, extra) {
-      progressBar.setTotal(items.length)
-      update(items, extra)
+    stop: function (count, extra) {
+      progressBar.setTotal(count)
+      update(count, extra)
       progressBar.stop()
     }
   }
