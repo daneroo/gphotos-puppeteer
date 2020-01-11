@@ -1,14 +1,14 @@
 const yargs = require('yargs')
 // const { usingRefreshToken, validateScope, makeRefreshTokenWithWebFlow } = require('./auth')
 const auth = require('./auth')
-// const generateCommand = require('./generateCommand')
-// const verifyCommand = require('./verifyCommand')
+const run = require('./run')
 
 module.exports = main
 
 function main () {
   yargs // eslint-disable-line
-    .command(auth) // default command - validates configuration
+    .command(run) // default command - validates configuration
+    .command(auth)
     .options({
       verbose: {
         // should be a count?? -v -v -vvv

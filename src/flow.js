@@ -6,30 +6,9 @@ const perf = require('./perf')
 const sleep = require('./sleep')
 const { moveDownloadedFile, downloadHandlerWithTimeout } = require('./download')
 
-const modes = {
-  listOnly: {
-    exists: async (id, downloadDir) => true
-  },
-  files: {
-    exists: async (id, downloadDir) => fs.existsSync(path.join(downloadDir, id)),
-    initiateDownload: async (page, n, id) => initiateDownload(page, n, id),
-    finalizeDownload: async (filename, id, downloadDir) => moveDownloadedFile(filename, id, downloadDir)
-  },
-  perkeep: {
-    exists: async (id, downloadDir) => perkeep.exists(id),
-    initiateDownload: async (page, n, id) => initiateDownload(page, n, id),
-    finalizeDownload: async (filename, id, downloadDir) => {
-      await dataDirs.moveDownloadedFile(filename, id, downloadDir)
-      const newPath = path.join(downloadDir, id, filename)
-
-      // TODO(daneroo): unhandled Rejection>
-      await perkeep.putLocked(newPath, id)
-    }
-  }
-}
-
 module.exports = {
-  modes, // just so they can be declared after this export
+  getMode,
+  modeNames,
   loopDetailPages,
   extractItems,
   navToFirstDetailPage,
@@ -43,6 +22,33 @@ module.exports = {
   currentActiveElement
 }
 
+const modes = {
+  list: {
+    exists: async (id, downloadDir) => true
+  },
+  files: {
+    exists: async (id, downloadDir) => fs.existsSync(path.join(downloadDir, id)),
+    initiateDownload: async (page, n, id) => initiateDownload(page, n, id),
+    finalizeDownload: async (filename, id, downloadDir) => moveDownloadedFile(filename, id, downloadDir)
+  },
+  perkeep: {
+    exists: async (id, downloadDir) => perkeep.exists(id),
+    initiateDownload: async (page, n, id) => initiateDownload(page, n, id),
+    finalizeDownload: async (filename, id, downloadDir) => {
+      await moveDownloadedFile(filename, id, downloadDir)
+      const newPath = path.join(downloadDir, id, filename)
+      // TODO(daneroo): unhandled Rejection>
+      await perkeep.putLocked(newPath, id)
+    }
+  }
+}
+
+function modeNames () {
+  return Object.keys(modes)
+}
+function getMode (modeName) {
+  return modes[modeName]
+}
 // loopDetailPages is the main loop for detail page iterator
 // - It assumes it is on the first detail page
 // - Iteration advances nextDetailPage() (which return null if failed)
@@ -51,14 +57,14 @@ module.exports = {
 // if alreadyExists(id) -> do nothing
 // if !alreadyExists(id) -> initiateDownload; if !timeout moveDownloadedFile (but dont await)
 // if n%batchSize -> reload, print progress
-async function loopDetailPages (page, downloadDir, mode = modes.listOnly) {
+async function loopDetailPages (page, downloadDir, modeName = 'list') {
+  const mode = getMode(modeName)
   const startRun = perf.now()
   let startBatch = perf.now() // will be reset every batchSize iterations
   const batchSize = 200 // reoptimize this
   const maxItems = 1e6
   const progressBar = new Progress.Bar({
-    // format: 'looping [{bar}] {percentage}% | ETA: {eta}s | {value}/{total} : exists:{exists} unresolved:{unresolved}'
-    format: 'looping [{bar}] | n:{value} exists:{exists} unresolved:{unresolved} elapsed:{duration}s reloads:{reloads} rates: batch:{rateBatch} total:{rateTotal}',
+    format: `${modeName} [{bar}] | n:{value} exists:{exists} unresolved:{unresolved} elapsed:{duration}s reloads:{reloads} rates: batch:{rateBatch} total:{rateTotal}`,
     clearOnComplete: false // false is te default
   })
   const counts = {

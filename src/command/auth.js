@@ -14,6 +14,7 @@ module.exports = {
         //   type: 'boolean'
         // },
         add: {
+          alias: 'a',
           default: false,
           describe: 'Add (replace) a user',
           type: 'boolean'
@@ -30,8 +31,6 @@ async function handler (argv) {
   console.info('Auth Command', { add, headless, verbose, progress })
   // validate?
 
-  const numWorkers = 0
-
   if (add) {
     console.info('Auth: adding (replacing) a user')
   } else {
@@ -44,7 +43,6 @@ async function handler (argv) {
   })
   const { browser, mainPage/*, workers */ } = await browserSetup.setup({
     headless: (add) ? false : headless,
-    numWorkers,
     userDataDir,
     userDownloadDir
   })

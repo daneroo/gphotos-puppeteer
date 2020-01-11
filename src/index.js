@@ -35,10 +35,6 @@ async function main () {
       await listMain(mainPage, 'ArrowLeft')
       await mainPage.reload({ waitUntil: ['load'] }) // about 3s
     }
-    // const url = await navToFirstDetailPage(mainPage)
-    // console.log(`FirstPhoto (Detail Page): (url:${url})`)
-    // // await sleep(500) // why ?
-    // await loopDetailPages(mainPage, userDownloadDir, modes.files)
 
     await sleep(3000)
   } catch (err) {
