@@ -1,7 +1,33 @@
 const puppeteer = require('puppeteer')
+const fsPromises = require('fs').promises
+const path = require('path')
 
 module.exports = {
+  makeDirs,
   setup
+}
+
+async function makeDirs ({ basePath = './data', forceNewDataDir = false } = {}) {
+  const paths = {
+    userDataDir: path.join(basePath, 'user-data-dir'),
+    userDownloadDir: path.join(basePath, 'downloads')
+  }
+  if (forceNewDataDir) {
+    await fsPromises.rmdir(paths.userDataDir, { recursive: true })
+      .then(() => {
+        console.warn(`Removed user-data-dir:${paths.userDataDir}`)
+      })
+      .catch(err => {
+        if (err.code !== 'ENOENT') { // ENOENT is fine thats what we're trying to do!
+          console.warn(err)
+        }
+      })
+  }
+  for (const k in paths) {
+    await fsPromises.mkdir(paths[k], { recursive: true })
+    // console.log(`made path - ${k} : ${paths[k]}`)
+  }
+  return paths
 }
 
 // Launches browser (headless option) and creates numWorker extra windows/tabs

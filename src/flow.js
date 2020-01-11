@@ -1,11 +1,10 @@
 const path = require('path')
 const fs = require('fs')
 const Progress = require('cli-progress')
-const dataDirs = require('./dataDirs.js')
 const perkeep = require('./perkeep')
 const perf = require('./perf')
 const sleep = require('./sleep')
-const { downloadHandlerWithTimeout } = require('./handler')
+const { moveDownloadedFile, downloadHandlerWithTimeout } = require('./download')
 
 const modes = {
   listOnly: {
@@ -14,7 +13,7 @@ const modes = {
   files: {
     exists: async (id, downloadDir) => fs.existsSync(path.join(downloadDir, id)),
     initiateDownload: async (page, n, id) => initiateDownload(page, n, id),
-    finalizeDownload: async (filename, id, downloadDir) => dataDirs.moveDownloadedFile(filename, id, downloadDir)
+    finalizeDownload: async (filename, id, downloadDir) => moveDownloadedFile(filename, id, downloadDir)
   },
   perkeep: {
     exists: async (id, downloadDir) => perkeep.exists(id),
