@@ -4,6 +4,7 @@ Download Google Photos with puppeteer
 
 ## TODO
 
+- replace stability charts below with screencaptures
 - finish flow->rxlist->flow
 - position First,Last, EnterDetail
 - (firstnewest,lastoldest)
@@ -11,17 +12,13 @@ Download Google Photos with puppeteer
   - iterator on Main/Detail
 - off by one error counts (n, exists) -> persisted,deduped?
 - explore <https://github.com/Qard/channel-surfer> as well as RxJS Subject - for Go architecture..
-- Google APIS automation: <https://github.com/asrivas/work-less-do-more>
-- Multibar progress for downloads -> unresolved
 - Retry on failed download: XX nnnn Response (AF1Qi...)  was not resolved in 5000ms
 - include bandwidth in metrics?
-- retry unresolved, with navigation, not page.goto()
 - See also: <https://github.com/daneroo/chromedp-manytabs>
 - Manage Windows (n workers)
 - CI (github actions)
   - renovate (vs greenkeeper, vs updatr)
-- Benchmarks (Queue,Metrics)
-- State (DB,downloads,perkeep)
+- State (DB(kv),downloads,perkeep)
 - Gatsby Site for monitoring, browsing
 - Alternative for listing with Google [Photos Library API](https://developers.google.com/photos/library/reference/rest)
 
@@ -39,6 +36,36 @@ mkdir -p data/coco/user-data-dir
   --use-mock-keychain \
   --user-data-dir=data/coco/user-data-dir \
   https://photos.google.com/
+```
+
+## Google Photos API
+
+This is a *real mess*.
+
+The Google Photo API does not allow downloading original media (stripped GEO in exif),
+it does however return a `productUrl` in it's `mediaItems` results.
+
+Fetching this productUrl actually redirects to a regular google photos url
+e.g. `https://photos.google.com/lr/photo/AF0wucKA2Oypb0UBLHNLSuPadtZiwpLKG-Go0BoMqkg9xLha7UVfkU0zLLkOIIdbNedRHBMQsy1rfiJdEdwYAPcj4ss4003nhQ` redirects to `https://photos.google.com/photo/AF1QipPH5vnIJzbiPCXCNxtE3ZmpUJLeHL4VTmrcM57J`
+
+Even by batching these `HEAD` requests (up to 30-40 at a time), we cannot achieve a rate faster than `20-30 url/s`
+This can be done this way through puppeteer (using a batch of 2 here):
+
+```js
+const productUrls = [
+  'https://photos.google.com/lr/photo/AF0wucKA2Oypb0UBLHNLSuPadtZiwpLKG-Go0BoMqkg9xLha7UVfkU0zLLkOIIdbNedRHBMQsy1rfiJdEdwYAPcj4ss4003nhQ',
+  'https://photos.google.com/lr/photo/AF0wucLfuXfIhk8XYP1r4wN6F_IFhgSiygzwC7iftuitsGTNPKZfRMZefDJev6URAh66HBECdaBkNXs2qhJy6-zrIkgMGqa-sA'
+]
+const urls = await mainPage.evaluate(async (us) => {
+  const ps = us.map(u => window.fetch(u, { method: 'HEAD' }))
+  const rs = await Promise.all(ps)
+  return rs.map(r => r.url)
+}, productUrls)
+console.log({ urls })
+// urls: [
+//   'https://photos.google.com/photo/AF1QipPH5vnIJzbiPCXCNxtE3ZmpUJLeHL4VTmrcM57J',
+//   'https://photos.google.com/photo/AF1QipMOl0XXrO9WPSv5muLRBFpbyzGsdnrqUqtF8f73'
+// ]
 ```
 
 ## Stability
