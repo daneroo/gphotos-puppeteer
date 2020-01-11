@@ -1,8 +1,8 @@
 
-const browserSetup = require('../browserSetup')
-const { authenticate, baseURL } = require('../authenticate')
-const { listMain } = require('../rxlist')
-const { navToFirstDetailPage, loopDetailPages, modeNames } = require('../flow')
+const browserSetup = require('./browserSetup')
+const { authenticate, baseURL } = require('./authenticate')
+const { listMain } = require('./rxlist')
+const { navToFirstDetailPage, loopDetailPages, modeNames } = require('./flow')
 
 module.exports = {
   command: 'run',
@@ -17,6 +17,7 @@ module.exports = {
           choices: ['listMain', ...modeNames()]
         },
         direction: {
+          alias: 'd',
           default: 'ArrowRight',
           describe: 'which direction to use while traversing items',
           choices: ['ArrowRight', 'ArrowLeft']

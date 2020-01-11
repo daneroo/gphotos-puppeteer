@@ -1,7 +1,7 @@
 
 const yargs = require('yargs')
-const browserSetup = require('../browserSetup')
-const { authenticate } = require('../authenticate')
+const browserSetup = require('./browserSetup')
+const { authenticate } = require('./authenticate')
 
 module.exports = {
   command: 'auth',

@@ -1,8 +1,6 @@
-const { authenticate } = require('./authenticate')
-const browserSetup = require('./browserSetup')
-const sleep = require('./sleep')
-// const { navToFirstDetailPage, loopDetailPages, modes } = require('./flow')
-const { listMain } = require('./rxlist')
+const yargs = require('yargs')
+const auth = require('./commandAuth')
+const run = require('./commandRun')
 
 main()
   .catch(err => {
@@ -10,37 +8,37 @@ main()
   })
 
 async function main () {
-  const headless = true
-  const numWorkers = 0
-  const { userDataDir, userDownloadDir } = await browserSetup.makeDirs('./data')
-  const { browser, mainPage/*, workers */ } = await browserSetup.setup({
-    headless,
-    numWorkers,
-    userDataDir,
-    userDownloadDir
-  })
-  // console.log(`Found ${workers.length} workers`)
-
-  try {
-    // browser.on('targetchanged', t => {
-    //   console.log(`>> target change: ${t.url()}`)
-    // })
-
-    await authenticate(mainPage)
-    await sleep(1000)
-    // throw new Error('Early')
-
-    for (let i = 0; i < 1; i++) {
-      await listMain(mainPage, 'ArrowRight')
-      await listMain(mainPage, 'ArrowLeft')
-      await mainPage.reload({ waitUntil: ['load'] }) // about 3s
-    }
-
-    await sleep(3000)
-  } catch (err) {
-    console.error(err)
-  }
-
-  console.log('Closing browser')
-  await browser.close()
+  yargs // eslint-disable-line
+    .command(run)
+    .command(auth)
+    .options({
+      verbose: {
+        // should be a count?? -v -v -vvv
+        alias: 'v',
+        describe: 'Run with verbose logging',
+        default: false
+      },
+      progress: {
+        alias: 'p',
+        describe: 'Run with progress bar',
+        default: true,
+        type: 'boolean'
+      },
+      headless: {
+        alias: 'h',
+        describe: 'Run in headless mode',
+        default: true,
+        type: 'boolean'
+      },
+      basepath: {
+        alias: 'b',
+        describe: 'Provide a base path for user-data-dir and downloads directories',
+        default: './data',
+        type: 'string'
+      }
+    })
+    .demandCommand(1, 'You need at least one command before moving on')
+    .epilogue(' * You should NOT check in your credentials/data directory into version control!! *')
+    .help()
+    .argv
 }
