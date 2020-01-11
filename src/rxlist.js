@@ -201,20 +201,20 @@ function pbOps (name, direction) {
 }
 
 // setupFocusListener sets up a local listener for focusin events
-// it returns a rx subect to which we may subscribe
+// it returns a rx subject to which we may subscribe
 // also returns a tearDown function to remove the listers we added.
 // Tricky callback structure:
 // 1- page.exposeFunction : define a function in the browser that calls our local callback
 //  - this local callback (backToPuppeteerXXXXX) has a reference to an RXjs 'subject' in its closure,
-//    to which thie values are pushed (`subject.next(href)`)
-//  - this local callback is given a unqe name, because it cannot be "UNexposed" or removed,
-//    and this prevents us from calling this functiona second time unless we make the name unique
+//    to which the values are pushed (`subject.next(href)`)
+//  - this local callback is given a unique name, because it cannot be "UNexposed" or removed,
+//    and this prevents us from calling this function a second time unless we make the name unique
 // 2- add an event listener for 'focusin' event type (which bubbles up, whereas 'focus' does not)
 //  - the event listener then calls our local backToPuppeteerXXXXX
 //  - the event listener is given a name (window.focusinHandler) so it can be removed later
 // 3- Start the iteration:
 //  - send the navigation key (direction=ArrowRight,ArrowLeft)
-//  - watch the 'href' variable, waiting for the callback to mutaste it's value
+//  - watch the 'href' variable, waiting for the callback to mutate it's value
 //  - if we are at the end, focus will not change, therefore callback will not be invoked
 //    and so we have a max timeout to detect this situation, maxDelay is set long enough to account
 //    for sometime very long delays and pauses in the browser navigation...

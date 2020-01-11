@@ -1,6 +1,7 @@
 const yargs = require('yargs')
 const auth = require('./commandAuth')
 const run = require('./commandRun')
+const { basePathDefault } = require('./browserSetup')
 
 main()
   .catch(err => {
@@ -30,10 +31,10 @@ async function main () {
         default: true,
         type: 'boolean'
       },
-      basepath: {
+      basePath: {
         alias: 'b',
         describe: 'Provide a base path for user-data-dir and downloads directories',
-        default: './data',
+        default: basePathDefault,
         type: 'string'
       }
     })

@@ -1,16 +1,35 @@
 const puppeteer = require('puppeteer')
 const fsPromises = require('fs').promises
 const path = require('path')
-
+const baseURL = 'https://photos.google.com/'
+const unAuthenticatedUser = 'anonymous'
+const basePathDefault = './data'
 module.exports = {
+  baseURL,
+  unAuthenticatedUser,
+  basePathDefault,
+  launchBrowser,
   makeDirs,
+  moveAnonymousDataDir,
   setup
 }
 
-async function makeDirs ({ basePath = './data', forceNewDataDir = false } = {}) {
+// launchBrowser just wrap calls to makeDirs, and setup
+async function launchBrowser ({ basePath = basePathDefault, userId = unAuthenticatedUser, headless = false, forceNewDataDir = false } = {}) {
+  const { userDataDir, userDownloadDir } = await makeDirs({ basePath, userId, forceNewDataDir })
+  const { browser, mainPage } = await setup({ headless, userDataDir, userDownloadDir })
+  return {
+    userDataDir,
+    userDownloadDir,
+    browser,
+    mainPage
+  }
+}
+// ${basePath}/${userId}/{user-data-dir|downloads}
+async function makeDirs ({ basePath = basePathDefault, userId = unAuthenticatedUser, forceNewDataDir = false } = {}) {
   const paths = {
-    userDataDir: path.join(basePath, 'user-data-dir'),
-    userDownloadDir: path.join(basePath, 'downloads')
+    userDataDir: path.join(basePath, userId, 'user-data-dir'),
+    userDownloadDir: path.join(basePath, userId, 'downloads')
   }
   if (forceNewDataDir) {
     await fsPromises.rmdir(paths.userDataDir, { recursive: true })
@@ -30,9 +49,31 @@ async function makeDirs ({ basePath = './data', forceNewDataDir = false } = {}) 
   return paths
 }
 
+async function moveAnonymousDataDir ({ basePath = basePathDefault, userId = unAuthenticatedUser } = {}) {
+  if (userId === unAuthenticatedUser) {
+    console.warn(`Auth: moving anonymous user-data-dir to itself: ${userId}`)
+    return
+  }
+  console.log(`Auth: moving anonymous user-data-dir to ${userId}`)
+  const oldDataDir = path.join(basePath, unAuthenticatedUser, 'user-data-dir')
+  const userDataDir = path.join(basePath, userId, 'user-data-dir')
+  await fsPromises.rmdir(userDataDir, { recursive: true })
+    .then(() => {
+      // console.warn(`Removed user-data-dir:${userDataDir} if it was present`)
+    })
+    .catch(err => {
+      if (err.code !== 'ENOENT') { // ENOENT is fine thats what we're trying to do!
+        console.warn(err)
+      }
+    })
+  await fsPromises.mkdir(path.resolve(userDataDir, '..'), { recursive: true })
+  await fsPromises.rename(oldDataDir, userDataDir)
+  console.info(`Moved new user-data-dir to: ${userDataDir}`)
+}
+
 // Launches browser (headless option) and creates numWorker extra windows/tabs
 async function setup ({ headless = false, numWorkers = 0, userDataDir, userDownloadDir }) {
-  console.log(`Lauching browser headless:${headless} userDataDir:${userDataDir} userDownloadDir:${userDownloadDir}`)
+  console.log(`Launching browser headless:${headless} userDataDir:${userDataDir} userDownloadDir:${userDownloadDir}`)
   const browser = await puppeteer.launch({
     headless,
     userDataDir
@@ -63,7 +104,7 @@ async function getFirst (browser) {
   // return page
   const pages = await browser.pages()
   if (pages.length !== 1) {
-    throw new Error(`Browser shoud only have 1 window, found ${pages.length}!`)
+    throw new Error(`Browser should only have 1 window, found ${pages.length}!`)
   }
   const page = pages[0]
 
@@ -75,7 +116,7 @@ async function getFirst (browser) {
 
 // pageInNewWindow launches a new tab/window
 // it does so by invoking window.open from an existing page.
-// Note: waitForTarget expects a certain fixed url, but we cannot pass in variabe values, as in page.evaluate
+// Note: waitForTarget expects a certain fixed url, but we cannot pass in variable values, as in page.evaluate
 //   so we open the new window at 'about:blank?id=new' and subsequently load `about:blank?id=${id}`
 async function pageInNewWindow (browser, launchFromPage, id) {
   await showPages(browser, `Before making ${id}`, launchFromPage)

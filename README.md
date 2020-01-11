@@ -21,7 +21,6 @@ Download Google Photos with puppeteer
 - CI (github actions)
   - renovate (vs greenkeeper, vs updatr)
 - Benchmarks (Queue,Metrics)
-- Multiple Profiles
 - State (DB,downloads,perkeep)
 - Gatsby Site for monitoring, browsing
 - Alternative for listing with Google [Photos Library API](https://developers.google.com/photos/library/reference/rest)
@@ -31,14 +30,14 @@ Download Google Photos with puppeteer
 One of my accounts does not allow me to log in to google with puppeteer's default options configured, the following invocation was sufficient to create a profile (manually) that could then be re-used with puppeteer's default options:
 
 ```bash
-mkdir -p data/user-data-dir
+mkdir -p data/coco/user-data-dir
 
 # Minimal:
 /Users/daniel/Code/iMetrical/gphotos-puppeteer/node_modules/puppeteer/.local-chromium/mac-706915/chrome-mac/Chromium.app/Contents/MacOS/Chromium \
   --no-first-run \
   --password-store=basic \
   --use-mock-keychain \
-  --user-data-dir=data/user-data-dir \
+  --user-data-dir=data/coco/user-data-dir \
   https://photos.google.com/
 ```
 

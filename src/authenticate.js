@@ -1,14 +1,27 @@
+const fsPromises = require('fs').promises
 const sleep = require('./sleep')
-const baseURL = 'https://photos.google.com/'
+const { baseURL, unAuthenticatedUser } = require('./browserSetup')
 
 module.exports = {
-  baseURL,
+  unAuthenticatedUser,
+  getUsers,
   authenticate
 }
-// authenticate returns the result of getActiveUser(),
-// or waits forever for authentication
-// flag to return early (if we are headless)
-async function authenticate (page, headless = false) {
+
+// basePath/{users}/user-data-dir | user !=anonymous
+// TODO(daneroo): validate that user-data-dir is present?
+async function getUsers ({ basePath } = {}) {
+  return (await fsPromises.readdir(basePath, { withFileTypes: true }))
+    .filter(dirent => dirent.isDirectory())
+    .filter(dirent => dirent.name !== unAuthenticatedUser)
+    .map(dirent => dirent.name)
+}
+// authenticate
+// on success ->returns the result of getActiveUser()=>{name,userId}
+// on failure ->
+//  if interactive -> waits forever for authentication
+//  if !interactive -> return immediately
+async function authenticate (page, { interactive = false } = {}) {
   await page.goto(baseURL)
   await sleep(1000) // wait for something else?
   // console.log(`..navigated to ${baseURL}`)
@@ -19,7 +32,7 @@ async function authenticate (page, headless = false) {
       const activeUser = await getActiveUser(page)
       return activeUser
     }
-    if (headless) {
+    if (!interactive) {
       // throw new Error('Cannot await authentication in headless mode')
       // console.log('Cannot await authentication in headless mode')
       return {}
@@ -30,7 +43,7 @@ async function authenticate (page, headless = false) {
 }
 
 // TODO(daneroo): what if querySelector returns null...
-// TODO(daneroo): araia-label may have different prefix text in other locales, better RegExp?
+// TODO(daneroo): aria-label may have different prefix text in other locales, better RegExp?
 // return {name,userId} if found
 // return {name:'Unknown',userId:null} if NOT found
 async function getActiveUser (page) {
