@@ -53,15 +53,15 @@ function getMode (modeName) {
 // - It assumes it is on the first detail page
 // - Iteration advances nextDetailPage() (which return null if failed)
 // - Termination criteria: page.url() is unchanged after 2 iterations (sameCount)
-// iner loop:
+// inner loop:
 // if alreadyExists(id) -> do nothing
-// if !alreadyExists(id) -> initiateDownload; if !timeout moveDownloadedFile (but dont await)
+// if !alreadyExists(id) -> initiateDownload; if !timeout moveDownloadedFile (but don't await)
 // if n%batchSize -> reload, print progress
 async function loopDetailPages (page, downloadDir, modeName = 'list') {
   const mode = getMode(modeName)
   const startRun = perf.now()
   let startBatch = perf.now() // will be reset every batchSize iterations
-  const batchSize = 200 // reoptimize this
+  const batchSize = 200 // re-optimize this
   const maxItems = 1e6
   const progressBar = new Progress.Bar({
     format: `${modeName} [{bar}] | n:{value} exists:{exists} unresolved:{unresolved} elapsed:{duration}s reloads:{reloads} rates: batch:{rateBatch} total:{rateTotal}`,
@@ -117,7 +117,7 @@ async function loopDetailPages (page, downloadDir, modeName = 'list') {
       if (n % batchSize === 0) {
         progressBar.setTotal(n + batchSize)
         // const start = perf.now()
-        await page.reload({ waitUntil: ['load'] }) // about 3s
+        await page.reload({ waitUntil: ['load'] })
         counts.reloads++
         // counts.reloads = perf.since(start).toFixed(2) + 'ms'
         const { rate: rateBatch } = perf.metrics('batch', startBatch, batchSize)
@@ -168,6 +168,7 @@ function photoIdFromURL (url) {
   }
   return null
 }
+
 // Extract all photo hrefs from Main/Album page
 // TODO(daneroo): ensure first seletion is counted
 // TODO(daneroo): turn this into an iterator?
@@ -205,7 +206,7 @@ async function extractItems (page, direction = 'ArrowRight', maxItems = 1e6, max
   }, backToPuppeteerName)
 
   const removeListener = async () => {
-    await page.evaluate(type => {
+    await page.evaluate(() => {
       document.removeEventListener('focusin', window.focusinHandler)
       delete window.focusinHandler
     })

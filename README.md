@@ -4,9 +4,9 @@ Download Google Photos with puppeteer
 
 ## TODO
 
+- position First,Last, EnterDetail
 - replace stability charts below with screencaptures
 - finish flow->rxlist->flow
-- position First,Last, EnterDetail
 - (firstnewest,lastoldest)
   - find from Main
   - iterator on Main/Detail

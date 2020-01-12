@@ -18,6 +18,7 @@ module.exports = {
 async function launchBrowser ({ basePath = basePathDefault, userId = unAuthenticatedUser, headless = false, forceNewDataDir = false } = {}) {
   const { userDataDir, userDownloadDir } = await makeDirs({ basePath, userId, forceNewDataDir })
   const { browser, mainPage } = await setup({ headless, userDataDir, userDownloadDir })
+  // console.log(`Launched browser headless:${headless} userDataDir:${userDataDir} userDownloadDir:${userDownloadDir}`)
   return {
     userDataDir,
     userDownloadDir,
@@ -73,7 +74,6 @@ async function moveAnonymousDataDir ({ basePath = basePathDefault, userId = unAu
 
 // Launches browser (headless option) and creates numWorker extra windows/tabs
 async function setup ({ headless = false, numWorkers = 0, userDataDir, userDownloadDir }) {
-  console.log(`Launching browser headless:${headless} userDataDir:${userDataDir} userDownloadDir:${userDownloadDir}`)
   const browser = await puppeteer.launch({
     headless,
     userDataDir

@@ -23,7 +23,7 @@ async function handler (argv) {
   const { add, basePath, headless, verbose, progress } = argv
 
   // console.info('Auth Command', { argv })
-  console.info('Auth Command', { add, headless, verbose, progress })
+  console.info('Auth Command', JSON.stringify({ add, headless, verbose, progress }))
   // validate?
 
   const users = []
@@ -65,7 +65,7 @@ async function handler (argv) {
     } catch (err) {
       console.error(err)
     }
-    console.log('Closing browser')
+    // console.log('Closing browser')
     await browser.close()
     for (const func of runAfterBrowserClose) {
       await func()

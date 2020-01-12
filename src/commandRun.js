@@ -1,7 +1,7 @@
 
 const { launchBrowser, baseURL } = require('./browserSetup')
 const { authenticate, getUsers } = require('./authenticate')
-
+const { pingPong } = require('./navigation')
 const { listDetail, listAlbum } = require('./rxlist')
 const { navToFirstDetailPage, loopDetailPages, modeNames } = require('./flow')
 
@@ -15,7 +15,7 @@ module.exports = {
           alias: 'm',
           default: 'list',
           describe: 'which mode to use while traversing items',
-          choices: ['listAlbum', 'listDetail', ...modeNames()]
+          choices: ['pingPong', 'listAlbum', 'listDetail', ...modeNames()]
         },
         direction: {
           alias: 'd',
@@ -32,7 +32,7 @@ async function handler (argv) {
   const { mode, direction, basePath, headless, verbose, progress } = argv
 
   // console.info('Auth Command', { argv })
-  console.info('Run Command', { mode, direction, headless, verbose, progress })
+  console.info('Run Command', JSON.stringify({ mode, direction, headless, verbose, progress }))
 
   for (const user of await getUsers({ basePath })) {
     console.log(`\n-Run: user:${user}`)
@@ -51,6 +51,8 @@ async function handler (argv) {
         if (mode === 'listAlbum') {
           await mainPage.reload({ waitUntil: ['load'] })
           await listAlbum(mainPage, direction)
+        } else if (mode === 'pingPong') {
+          await pingPong(mainPage)
         } else if (mode === 'listDetail') {
         // const last = 'https://photos.google.com/photo/AF1QipPH5vnIJzbiPCXCNxtE3ZmpUJLeHL4VTmrcM57J'
         // await mainPage.goto(last, { waitUntil: ['load'] })
@@ -69,7 +71,7 @@ async function handler (argv) {
     } catch (err) {
       console.error(err)
     }
-    console.log('Closing browser')
+    // console.log('Closing browser')
     await browser.close()
   }
 }
