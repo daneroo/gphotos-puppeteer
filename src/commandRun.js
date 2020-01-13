@@ -4,6 +4,7 @@ const { authenticate, getUsers } = require('./authenticate')
 const { pingPong } = require('./navigation')
 const { listDetail, listAlbum } = require('./rxlist')
 const { navToFirstDetailPage, loopDetailPages, modeNames } = require('./flow')
+const { navToEnd, navToStart, navToDetailPage } = require('./navigation')
 
 module.exports = {
   command: 'run',
@@ -54,17 +55,17 @@ async function handler (argv) {
         } else if (mode === 'pingPong') {
           await pingPong(mainPage)
         } else if (mode === 'listDetail') {
-        // const last = 'https://photos.google.com/photo/AF1QipPH5vnIJzbiPCXCNxtE3ZmpUJLeHL4VTmrcM57J'
-        // await mainPage.goto(last, { waitUntil: ['load'] })
-        // console.log(`LastPhotoPhoto (Detail Page): (url:${last})`)
-          await mainPage.goto(baseURL, { waitUntil: ['load'] })
-          const url = await navToFirstDetailPage(mainPage)
-          console.log(`FirstPhoto (Detail Page): (url:${url})`)
+          // YThis section should move into flow
+          const { first, last } = await navToEnd(mainPage)
+          console.log(`First Photo (Detail Page): (url:${first})`)
+          console.log(`Last Photo  (Detail Page): (url:${last})`)
+          await navToDetailPage(mainPage, (direction === 'ArrowRight') ? first : last)
           await listDetail(mainPage, direction)
         } else {
-          await mainPage.goto(baseURL, { waitUntil: ['load'] })
-          const url = await navToFirstDetailPage(mainPage)
-          console.log(`FirstPhoto (Detail Page): (url:${url})`)
+          // This is deprecated... test before remove
+          const first = await navToStart(mainPage)
+          await navToDetailPage(mainPage, first)
+          console.log(`First Photo (Detail Page): (url:${first})`)
           await loopDetailPages(mainPage, userDownloadDir, mode)
         }
       }

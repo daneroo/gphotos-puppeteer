@@ -49,6 +49,7 @@ function modeNames () {
 function getMode (modeName) {
   return modes[modeName]
 }
+
 // loopDetailPages is the main loop for detail page iterator
 // - It assumes it is on the first detail page
 // - Iteration advances nextDetailPage() (which return null if failed)
@@ -291,7 +292,7 @@ async function enterDetailPage (page, maxDelay = 5000) {
   }
 }
 
-// initiateDownload returns a promis of either:
+// initiateDownload returns a promise of either:
 //  - timeout: {n,id,timeout}
 //  - download initiated response: { n, id, filename, contentLength, url, elapsed }
 // shiftD could be injected?
