@@ -4,6 +4,7 @@ const path = require('path')
 const baseURL = 'https://photos.google.com/'
 const unAuthenticatedUser = 'anonymous'
 const basePathDefault = './data'
+
 module.exports = {
   baseURL,
   unAuthenticatedUser,

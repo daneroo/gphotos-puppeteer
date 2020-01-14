@@ -3,10 +3,13 @@ const auth = require('./commandAuth')
 const run = require('./commandRun')
 const { basePathDefault } = require('./browserSetup')
 
-main()
-  .catch(err => {
-    console.error(err)
-  })
+module.exports = main
+
+// moved to gphotos-puppeteer (executable script  in root: script)
+// main()
+//   .catch(err => {
+//     console.error(err)
+//   })
 
 async function main () {
   yargs // eslint-disable-line
@@ -26,7 +29,7 @@ async function main () {
         type: 'boolean'
       },
       headless: {
-        alias: 'h',
+        // alias: 'h', // confusing with help
         describe: 'Run in headless mode',
         default: true,
         type: 'boolean'

@@ -1,0 +1,9 @@
+#! /usr/bin/env node
+
+// Just the bin script entrypoint
+const main = require('./src/index.js')
+
+main()
+  .catch(err => {
+    console.error(err)
+  })

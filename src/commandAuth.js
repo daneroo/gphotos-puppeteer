@@ -36,7 +36,7 @@ async function handler (argv) {
   }
 
   for (const user of users) {
-    const runAfterBrowserClose = [() => { console.log(`Running finalizers for ${user}`) }]
+    const runAfterBrowserClose = []
     console.log(`\n-Auth: ${user}`)
 
     const { browser, mainPage, userDataDir } = await launchBrowser({

@@ -1,9 +1,9 @@
 
-const { launchBrowser, baseURL } = require('./browserSetup')
+const { launchBrowser } = require('./browserSetup')
 const { authenticate, getUsers } = require('./authenticate')
 const { pingPong } = require('./navigation')
 const { listDetail, listAlbum } = require('./rxlist')
-const { navToFirstDetailPage, loopDetailPages, modeNames } = require('./flow')
+const { loopDetailPages, modeNames } = require('./flow')
 const { navToEnd, navToStart, navToDetailPage } = require('./navigation')
 
 module.exports = {
@@ -55,7 +55,7 @@ async function handler (argv) {
         } else if (mode === 'pingPong') {
           await pingPong(mainPage)
         } else if (mode === 'listDetail') {
-          // YThis section should move into flow
+          // This section should move into flow - and combine navTo,..,.listDetail|Album
           const { first, last } = await navToEnd(mainPage)
           console.log(`First Photo (Detail Page): (url:${first})`)
           console.log(`Last Photo  (Detail Page): (url:${last})`)
