@@ -4,6 +4,7 @@ Download Google Photos with puppeteer
 
 ## TODO
 
+- Hangs: related to teardown, and pb.stop, both need to be called (finally)
 - position First,Last, EnterDetail
 - replace stability charts below with screencaptures
 - finish flow->rxlist->flow

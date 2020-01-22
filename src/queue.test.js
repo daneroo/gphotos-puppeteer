@@ -88,13 +88,13 @@ describe('test Promise.race - completion wrapper', () => {
   test('order asc', async () => {
     const queue = [sleep(1), sleep(2)]
     const [completed] = await Promise.race(queue.map(p => p.then(res => [p])))
-    expect(completed).toBe(queue[0])
+    expect(completed).toStrictEqual(queue[0])
     await Promise.all(queue)
   })
   test('order desc', async () => {
     const queue = [sleep(2), sleep(1)]
     const [completed] = await Promise.race(queue.map(p => p.then(res => [p])))
-    expect(completed).toBe(queue[1])
+    expect(completed).toStrictEqual(queue[1])
     await Promise.all(queue)
   })
 })

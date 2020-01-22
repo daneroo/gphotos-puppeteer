@@ -1,5 +1,6 @@
-const perf = require('./perf')
 const sleep = require('./sleep')
+const { listDetail, listAlbum } = require('./rxlist')
+
 const { baseURL } = require('./browserSetup')
 
 module.exports = {
@@ -13,26 +14,23 @@ module.exports = {
 async function pingPong (page) {
   const h2id = (href) => href.split('/').slice(-1)[0]
 
-  const n = 1
-  const start = perf.now()
-  for (let i = 0; i < n; i++) {
-    // await page.goto(baseURL, { waitUntil: ['load'] })
+  const maxItems = -1
+  await page.goto(baseURL, { waitUntil: ['load'] })
 
-    // for (let i = 0; i < 30; i++) {
-    //   await page.keyboard.press('PageDown')
-    //   await sleep(100)
-    // }
-
-    // const first = await navToStart(page, { iKnowItsAFreshPage: true })
-    // console.log(i, h2id(first))
-
-    const { first, last } = await navToEnd(page)
-    console.log(i, h2id(first), h2id(last))
-
-    // to observe
-    // await sleep(5000)
+  const first = await navToStart(page)
+  console.log(` first: ${h2id(first)}`)
+  for (const direction of ['ArrowRight', 'ArrowLeft']) { // order is important for now
+    await listAlbum(page, { direction, maxItems })
   }
-  perf.log('pingPong', start, n)
+
+  { // nested bloc to redefine start
+    const { first, last } = await navToEnd(page)
+    console.log(` first: ${h2id(first)}, last: ${h2id(last)}`)
+    for (const direction of ['ArrowRight', 'ArrowLeft']) {
+      await navToDetailPage(page, (direction === 'ArrowRight') ? first : last)
+      await listDetail(page, { direction, maxItems })
+    }
+  }
 }
 
 // navToStart returns href of First Photo on Main Album Page

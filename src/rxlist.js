@@ -12,7 +12,7 @@ module.exports = {
   oneLoopUntilTimeout
 }
 
-async function listDetail (page, direction = 'ArrowRight', maxDelay = 3000, maxConsecutiveZeroCounts = 2, reloadBatchSize = 200) {
+async function listDetail (page, { direction = 'ArrowRight', maxDelay = 3000, maxItems = -1, maxConsecutiveZeroCounts = 3, reloadBatchSize = 200 } = {}) {
   async function setupTargetChangedListener (page) {
     const subject = new Subject()
     const listener = t => {
@@ -41,7 +41,7 @@ async function listDetail (page, direction = 'ArrowRight', maxDelay = 3000, maxC
   // rewrite pb.update so we don't need to accumulate items..
   let items = 0
   async function onItem (href) {
-    // wait for page.url() to catch up to tagetchanged.url()
+    // wait for page.url() to catch up to targetchanged.url()
     const miniTick = 3 // ms, tight loop but don't lock the process!
     while (href !== page.url()) {
       await sleep(miniTick)
@@ -60,18 +60,21 @@ async function listDetail (page, direction = 'ArrowRight', maxDelay = 3000, maxC
     await page.keyboard.press(direction)
   }
 
-  const extra = await nLoopsUntilConsecutiveZeroCounts(maxConsecutiveZeroCounts, maxDelay, subject, onItem, onNext, onLoop)
-  pb.stop(extra.count, extra)
-  // perf.log(`Found ${items.length} photos (${direction}) timeouts:${consecutiveZeroCounts}`, start, items.length)
-
-  await tearDown() // remove handlers and function definitions
+  try {
+    const extra = await nLoopsUntilConsecutiveZeroCounts({ maxConsecutiveZeroCounts, maxDelay, maxItems, subject, onItem, onNext, onLoop })
+    pb.stop(extra.count, extra)
+    console.debug('listDetail terminated', { extra })
+  } finally {
+    pb.stop(0) // this is the guy! both teardown and pb.stop must be called!
+    await tearDown() // remove handlers and function definitions
+  }
 }
 
 // Extract all photo hrefs from Main/Album page
-// TODO(daneroo): ensure first seletion is counted
+// TODO(daneroo): ensure first selection is counted
 // TODO(daneroo): turn this into an iterator?
 // Idea: Use the focusin DOM event to detect that navigation has changed focus to new element
-async function listAlbum (page, direction = 'ArrowRight', maxDelay = 3000, maxConsecutiveZeroCounts = 2) {
+async function listAlbum (page, { direction = 'ArrowRight', maxDelay = 3000, maxItems = -1, maxConsecutiveZeroCounts = 3 } = {}) {
   const { subject, tearDown } = await setupFocusListener(page)
 
   const pb = pbOps('Album List', direction)
@@ -90,20 +93,22 @@ async function listAlbum (page, direction = 'ArrowRight', maxDelay = 3000, maxCo
     await page.keyboard.press(direction)
   }
 
-  const extra = await nLoopsUntilConsecutiveZeroCounts(maxConsecutiveZeroCounts, maxDelay, subject, onItem, onNext, onLoop)
-
-  pb.stop(extra.count, extra)
-  // perf.log(`Found ${items.length} photos (${direction}) timeouts:${consecutiveZeroCounts}`, start, items.length)
-
-  await tearDown() // remove handlers and function definitions
+  try {
+    const extra = await nLoopsUntilConsecutiveZeroCounts({ maxConsecutiveZeroCounts, maxDelay, maxItems, subject, onItem, onNext, onLoop })
+    pb.stop(extra.count, extra)
+  } finally {
+    pb.stop(0) // this is the guy! both teardown and pb.stop must be called!
+    await tearDown() // remove handlers and function definitions
+  }
 }
 
-async function nLoopsUntilConsecutiveZeroCounts (maxConsecutiveZeroCounts = 2, maxDelay = 3000, subject, onItem, onNext, onLoop) {
+async function nLoopsUntilConsecutiveZeroCounts ({ maxConsecutiveZeroCounts = 3, maxDelay = 3000, maxItems = -1, subject, onItem, onNext, onLoop } = {}) {
   let count = 0
   let loops = 0
   let consecutiveZeroCounts = 0
   while (true) {
-    const loopCount = await oneLoopUntilTimeout(maxDelay, subject, onItem, onNext)
+    const itemsLeft = (maxItems < 0) ? maxItems : Math.max(0, maxItems - count)
+    const loopCount = await oneLoopUntilTimeout({ maxDelay, maxItems: itemsLeft, subject, onItem, onNext })
     count += loopCount
     loops++
     if (loopCount === 0) {
@@ -113,6 +118,9 @@ async function nLoopsUntilConsecutiveZeroCounts (maxConsecutiveZeroCounts = 2, m
     }
     await onLoop({ count, consecutiveZeroCounts, loops, loopCount })
     if (consecutiveZeroCounts >= maxConsecutiveZeroCounts) {
+      break
+    }
+    if (count >= maxItems) {
       break
     }
   }
@@ -128,7 +136,7 @@ async function nLoopsUntilConsecutiveZeroCounts (maxConsecutiveZeroCounts = 2, m
 //  the iteration is started by calling `await onNext()`
 //  return count
 // TODO(daneroo): early return if other condition? perhaps onNext could return done?
-async function oneLoopUntilTimeout (maxDelay = 3000, subject, onItem, onNext) {
+async function oneLoopUntilTimeout ({ maxDelay = 3000, maxItems = -1, subject, onItem, onNext }) {
   const { promise, resolver } = resolvable()
   let count = 0
   const sbs = subject
@@ -141,8 +149,11 @@ async function oneLoopUntilTimeout (maxDelay = 3000, subject, onItem, onNext) {
         count++
         await onItem(href)
         // await sleep(100)
+
         // propagate event chain! (should cause subject.next(href))
-        await onNext()
+        if (maxItems < 0 || (maxItems >= 0 && count < maxItems)) {
+          await onNext()
+        }
       },
       error: async (e) => { // timeout
         resolver() // can only be timeout,so we are done
@@ -160,7 +171,7 @@ function pbOps (name, direction) {
   const progressBar = new Progress.Bar({
     format: `${name} [{bar}] | n:{value} direction:{direction} rate:{rate}/s elapsed:{elapsed}s id:{id}`
     // to debug loop stuff
-    // format: `${name} [{bar}] | n:{value} direction:{direction} rate:{rate}/s elapsed:{elapsed}s  id:{id} loop[consecZCounts:{consecutiveZeroCounts} loops:{loops} loopCount:{loopCount} count:{count}]`
+    // format: `${name} [{bar}] | n:{value} direction:{direction} rate:{rate}/s elapsed:{elapsed}s  id:{id} loop[CZC:{consecutiveZeroCounts} loops:{loops} loopCount:{loopCount} count:{count}]`
   })
   let payload = {
     direction,
@@ -221,7 +232,7 @@ function pbOps (name, direction) {
 // 4- remove the listener,...
 async function setupFocusListener (page) {
   // Looks like this can't be reversed (unexposed)
-  // since we may need to call this multimple times, generate a unique name for the function
+  // since we may need to call this multiple times, generate a unique name for the function
   const subject = new Subject()// ** This variable is bound to the exposed backToPuppeteerXXX() callback
   const backToPuppeteerName = `backToPuppeteer${+new Date()}`
   await page.exposeFunction(backToPuppeteerName, href => {
@@ -234,14 +245,14 @@ async function setupFocusListener (page) {
   }, backToPuppeteerName)
 
   // return the function that removes the listener we just added
-  // if it were possible we would also unExspose the backToPuppeteerXXX function
+  // if it were possible we would also unExpose the backToPuppeteerXXX function
   const tearDown = async () => {
     await page.evaluate(type => {
       document.removeEventListener('focusin', window.focusinHandler)
       delete window.focusinHandler
     })
     // page.exposeFunction has no inverse
-    // await page.UNexposeFunction(backToPuppeteerName,..)
+    // await page.UNExposeFunction(backToPuppeteerName,..)
   }
   return {
     subject,

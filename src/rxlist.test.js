@@ -34,7 +34,7 @@ describe('RxList', () => {
     }
 
     const onLoop = (extra) => { }
-    await nLoopsUntilConsecutiveZeroCounts(maxConsecutiveZeroCounts, maxDelay, subject, onItem, onNext, onLoop)
+    await nLoopsUntilConsecutiveZeroCounts({ maxConsecutiveZeroCounts, maxDelay, subject, onItem, onNext, onLoop })
 
     // expect(items).toEqual([0])
     // expect(items).toEqual([0, 2])
@@ -59,7 +59,7 @@ describe('RxList', () => {
       nextId++
       subject.next(nextId)
     }
-    await oneLoopUntilTimeout(maxDelay, subject, onItem, onNext)
+    await oneLoopUntilTimeout({ maxDelay, subject, onItem, onNext })
     expect(items).toEqual([1, 2, 3])
   })
   test('oneLoopUntilTimeout', async () => {
@@ -79,9 +79,10 @@ describe('RxList', () => {
       }
       subject.next(nextId)
     }
-    await oneLoopUntilTimeout(maxDelay, subject, onItem, onNext)
+    await oneLoopUntilTimeout({ maxDelay, subject, onItem, onNext })
     expect(items).toEqual([1, 2, 3])
   })
+
   test('externalPage action pattern with timeout', async () => {
     let nextId = 0
     const maxDelay = 10
@@ -105,7 +106,7 @@ describe('RxList', () => {
 
     subject
       .pipe(
-        tap(href => { // accumutate items as a side effect
+        tap(href => { // accumulate items as a side effect
           items.push(href)
         }),
         timeout(maxDelay)
@@ -119,7 +120,7 @@ describe('RxList', () => {
         }
       })
     await externalPageAction()
-    await p // resoved on timeout
+    await p // resolved on timeout
     expect(items).toEqual([1, 2, 3])
   })
 })
