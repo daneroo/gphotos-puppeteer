@@ -65,7 +65,7 @@ async function listDetail (page, { direction = 'ArrowRight', maxDelay = 3000, ma
     pb.stop(extra.count, extra)
     console.debug('listDetail terminated', { extra })
   } finally {
-    pb.stop(0) // this is the guy! both teardown and pb.stop must be called!
+    pb.stop() // this is the guy! both teardown and pb.stop must be called!
     await tearDown() // remove handlers and function definitions
   }
 }
@@ -96,8 +96,9 @@ async function listAlbum (page, { direction = 'ArrowRight', maxDelay = 3000, max
   try {
     const extra = await nLoopsUntilConsecutiveZeroCounts({ maxConsecutiveZeroCounts, maxDelay, maxItems, subject, onItem, onNext, onLoop })
     pb.stop(extra.count, extra)
+    console.debug('listAlbum terminated', { extra })
   } finally {
-    pb.stop(0) // this is the guy! both teardown and pb.stop must be called!
+    pb.stop() // this is the guy! both teardown and pb.stop must be called!
     await tearDown() // remove handlers and function definitions
   }
 }
@@ -120,7 +121,7 @@ async function nLoopsUntilConsecutiveZeroCounts ({ maxConsecutiveZeroCounts = 3,
     if (consecutiveZeroCounts >= maxConsecutiveZeroCounts) {
       break
     }
-    if (count >= maxItems) {
+    if (maxItems > 0 && count >= maxItems) {
       break
     }
   }
@@ -169,7 +170,7 @@ async function oneLoopUntilTimeout ({ maxDelay = 3000, maxItems = -1, subject, o
 function pbOps (name, direction) {
   const start = perf.now()
   const progressBar = new Progress.Bar({
-    format: `${name} [{bar}] | n:{value} direction:{direction} rate:{rate}/s elapsed:{elapsed}s id:{id}`
+    format: `${name} [{bar}] | n:{value} direction:{direction} rate:{rate}/s elapsed:{elapsed}s id:{id} loopCount:{loopCount}`
     // to debug loop stuff
     // format: `${name} [{bar}] | n:{value} direction:{direction} rate:{rate}/s elapsed:{elapsed}s  id:{id} loop[CZC:{consecutiveZeroCounts} loops:{loops} loopCount:{loopCount} count:{count}]`
   })
@@ -204,8 +205,12 @@ function pbOps (name, direction) {
     },
     update,
     stop: function (count, extra) {
-      progressBar.setTotal(count)
-      update(count, extra)
+      if (count) {
+        progressBar.setTotal(count)
+        if (extra) {
+          update(count, extra)
+        }
+      }
       progressBar.stop()
     }
   }
