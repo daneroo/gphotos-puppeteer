@@ -4,19 +4,13 @@ Download Google Photos with puppeteer
 
 ## TODO
 
-- exactTermination criteria (after onItem)
-- combine onItem and onNext
-- Hangs: related to teardown, and pb.stop, both need to be called (finally)
-- position First,Last, EnterDetail
-- replace stability charts below with screencaptures
-- finish flow->rxlist->flow
-- (firstnewest,lastoldest)
-  - find from Main
-  - iterator on Main/Detail
-- off by one error counts (n, exists) -> persisted,deduped?
-- explore <https://github.com/Qard/channel-surfer> as well as RxJS Subject - for Go architecture..
+- Combine onItem and onNext
+- Replace stability charts below with screencaptures
+- Finish flow->rxlist->flow
+- Off by one error counts (n, exists) -> persisted,deduped?
+- Explore <https://github.com/Qard/channel-surfer> as well as RxJS Subject - for Go architecture..
 - Retry on failed download: XX nnnn Response (AF1Qi...)  was not resolved in 5000ms
-- include bandwidth in metrics?
+- Include bandwidth in metrics?
 - See also: <https://github.com/daneroo/chromedp-manytabs>
 - Manage Windows (n workers)
 - CI (github actions)
