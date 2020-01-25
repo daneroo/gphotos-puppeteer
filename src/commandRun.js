@@ -15,13 +15,22 @@ module.exports = {
         mode: {
           alias: 'm',
           default: 'list',
-          describe: 'which mode to use while traversing items',
+          describe: 'Which mode to use while traversing items',
           choices: ['pingPong', 'listAlbum', 'listDetail', ...modeNames()]
+        },
+        user: {
+          alias: 'u',
+          describe: 'select which user profile to use (default is to iterate over all authenticated users)'
+        },
+        maxIterations: {
+          alias: 'i',
+          default: 1,
+          describe: 'Number of iterations to perform'
         },
         direction: {
           alias: 'd',
           default: 'ArrowRight',
-          describe: 'which direction to use while traversing items',
+          describe: 'Which direction to use while traversing items',
           choices: ['ArrowRight', 'ArrowLeft']
         }
       })
@@ -31,26 +40,21 @@ module.exports = {
 
 async function handler (argv) {
   let exceptions = 0
-  const { mode, direction, basePath, headless, verbose, progress } = argv
+  const { user, mode, direction, maxIterations, basePath, headless, verbose, progress } = argv
 
-  // console.info('Auth Command', { argv })
-  console.info('Run Command', JSON.stringify({ mode, direction, headless, verbose, progress }))
+  console.info('Run Command Options:', { argv })
 
-  const users = await getUsers({ basePath })
-  // const users = ['peru.lauzon@gmail.com', 'daniel.lauzon@gmail.com']
-  for (const user of users) { // .slice(0, 1) .slice(-1)
-    const maxIterations = 5
+  const users = (user) ? [user] : await getUsers({ basePath })
+  for (const user of users) {
     for (let it = 0; it < maxIterations; it++) {
-      console.log(`-Run: user:${user} iteration:${it + 1}/${maxIterations}`)
       const { browser, mainPage, userDownloadDir } = await launchBrowser({ basePath, userId: user, headless })
 
       try {
         const { name, userId } = await authenticate(mainPage)
         if (!userId) {
-          console.log('Authentication failed')
-          throw new Error('Authentication failed')
+          throw new Error(`Authentication failed user:${user}, name:${name}`)
         }
-        console.log(`Authenticated as ${name} (${userId || ''})`)
+        console.log(`\nRunning iteration:${it + 1}/${maxIterations} as ${name} (${userId || ''})`)
 
         if (mode === 'listAlbum') {
           await mainPage.reload({ waitUntil: ['load'] })
@@ -75,7 +79,7 @@ async function handler (argv) {
         exceptions++
         console.error(err)
       }
-      console.log(`Iteration ${it + 1}/${maxIterations} terminated for ${user}. Closing browser`)
+      // console.log(`Iteration ${it + 1}/${maxIterations} terminated for ${user}. Closing browser`)
       await browser.close()
     }
   }
