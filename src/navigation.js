@@ -24,8 +24,9 @@ async function pingPong (page) {
 
   { // nested block to redefine start
     const { first, last } = await navToEnd(page)
-    console.log(` first: ${h2id(first)}, last: ${h2id(last)}`)
-    for (const direction of ['ArrowRight', 'ArrowLeft']) {
+    console.log(`Bounds first:${h2id(first)}, last:${h2id(last)}`)
+    // for (const direction of ['ArrowRight', 'ArrowLeft']) {
+    for (const direction of ['ArrowLeft']) {
       await navToDetailPage(page, (direction === 'ArrowRight') ? first : last)
       const terminationHref = (direction === 'ArrowRight') ? last : first
       await listDetail(page, { direction, terminationHref, maxItems })
@@ -61,17 +62,17 @@ async function navToStart (page, { maxIterations = 1000, resendEvery = 100 } = {
 
 // navToEnd returns {firsts,last} the href of First and Last photo on Main Album page
 // - also leaves the last item selected on the main page.
-// - throws if not on main album page or has an active selected element
 // - calls navToStart to position on first element
 // The timing (tick=500) is critical in the sense that after the scroll
-// event `End`, the active element in the page becomes null
-// and if we send the ArrowRight event too quickly it simply selects the next item
-// if the delay is sufficient, it will select the first photo after the scrolled to position
-// in tah case, the subsequent scroll (End) event will have no effect,
+// event (`End`), the active element in the page becomes null
+// and if we send the ArrowRight event too quickly it simply selects the next item.
+// If the delay is sufficient, it will select the first photo after the scrolled to position
+// in that case, the subsequent scroll (End) event will have no effect,
 // but the ArrowRight events will iterate to the last item on the page.
-// the termination criteria is when the iteration stops advancing
+// The termination criteria is when the iteration stops advancing
 // for `minTerminationRepeats` consecutive iterations.
 // Also throws after maxIterations (for safety)
+// default maxIteration=100 * tick=500 => maxTImeout of 50s
 async function navToEnd (page, { minTerminationRepeats = 3, maxIterations = 100 } = {}) {
   const tick = 500
 
