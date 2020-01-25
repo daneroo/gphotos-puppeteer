@@ -15,20 +15,20 @@ async function pingPong (page) {
   const h2id = (href) => href.split('/').slice(-1)[0]
 
   const maxItems = -1
-  await page.goto(baseURL, { waitUntil: ['load'] })
 
-  const first = await navToStart(page)
-  console.log(` first: ${h2id(first)}`)
-  for (const direction of ['ArrowRight', 'ArrowLeft']) { // order is important for now
-    await listAlbum(page, { direction, maxItems })
-  }
+  // const first = await navToStart(page)
+  // console.log(` first: ${h2id(first)}`)
+  // for (const direction of ['ArrowRight', 'ArrowLeft']) { // order is important for now
+  //   await listAlbum(page, { direction, maxItems })
+  // }
 
-  { // nested bloc to redefine start
+  { // nested block to redefine start
     const { first, last } = await navToEnd(page)
     console.log(` first: ${h2id(first)}, last: ${h2id(last)}`)
     for (const direction of ['ArrowRight', 'ArrowLeft']) {
       await navToDetailPage(page, (direction === 'ArrowRight') ? first : last)
-      await listDetail(page, { direction, maxItems })
+      const terminationHref = (direction === 'ArrowRight') ? last : first
+      await listDetail(page, { direction, terminationHref, maxItems })
     }
   }
 }

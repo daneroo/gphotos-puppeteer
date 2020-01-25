@@ -12,7 +12,7 @@ module.exports = {
   oneLoopUntilTimeout
 }
 
-async function listDetail (page, { direction = 'ArrowRight', maxDelay = 3000, maxItems = -1, maxConsecutiveZeroCounts = 3, reloadBatchSize = 200 } = {}) {
+async function listDetail (page, { direction = 'ArrowRight', terminationHref, maxDelay = 3000, maxItems = -1, maxConsecutiveZeroCounts = 5, reloadBatchSize = 200 } = {}) {
   async function setupTargetChangedListener (page) {
     const subject = new Subject()
     const listener = t => {
@@ -56,8 +56,14 @@ async function listDetail (page, { direction = 'ArrowRight', maxDelay = 3000, ma
   function onLoop (extra) {
     pb.update(extra.count, extra)
   }
-  async function onNext () {
-    await page.keyboard.press(direction)
+  async function onNext (href) {
+    const done = terminationHref && terminationHref === href
+    if (done) {
+      subject.complete()
+    } else {
+      // cause subject.next()
+      await page.keyboard.press(direction)
+    }
   }
 
   try {
@@ -74,7 +80,7 @@ async function listDetail (page, { direction = 'ArrowRight', maxDelay = 3000, ma
 // TODO(daneroo): ensure first selection is counted
 // TODO(daneroo): turn this into an iterator?
 // Idea: Use the focusin DOM event to detect that navigation has changed focus to new element
-async function listAlbum (page, { direction = 'ArrowRight', maxDelay = 3000, maxItems = -1, maxConsecutiveZeroCounts = 3 } = {}) {
+async function listAlbum (page, { direction = 'ArrowRight', terminationHref, maxDelay = 3000, maxItems = -1, maxConsecutiveZeroCounts = 3 } = {}) {
   const { subject, tearDown } = await setupFocusListener(page)
 
   const pb = pbOps('Album List', direction)
@@ -85,12 +91,20 @@ async function listAlbum (page, { direction = 'ArrowRight', maxDelay = 3000, max
   async function onItem (href) {
     items++
     pb.update(items, { href })
+    const done = terminationHref && terminationHref === href
+    return done
   }
   function onLoop (extra) {
     pb.update(extra.count, extra)
   }
-  async function onNext () {
-    await page.keyboard.press(direction)
+  async function onNext (href) {
+    const done = terminationHref && terminationHref === href
+    if (done) {
+      subject.complete()
+    } else {
+      // cause subject.next()
+      await page.keyboard.press(direction)
+    }
   }
 
   try {
@@ -136,33 +150,34 @@ async function nLoopsUntilConsecutiveZeroCounts ({ maxConsecutiveZeroCounts = 3,
 //  also call `await onNext()` after each observed href
 //  the iteration is started by calling `await onNext()`
 //  return count
-// TODO(daneroo): early return if other condition? perhaps onNext could return done?
+// TODO(daneroo): early return if other condition? perhaps onNext could subject.complete
 async function oneLoopUntilTimeout ({ maxDelay = 3000, maxItems = -1, subject, onItem, onNext }) {
   const { promise, resolver } = resolvable()
   let count = 0
   const sbs = subject
     .pipe(
-      // tap(onItem), // moved to subscribe.next below to make it async
       timeout(maxDelay)
     )
     .subscribe({
       next: async (href) => { // can href be null?
         count++
         await onItem(href)
-        // await sleep(100)
 
         // propagate event chain! (should cause subject.next(href))
         if (maxItems < 0 || (maxItems >= 0 && count < maxItems)) {
-          await onNext()
+          await onNext(href)
         }
       },
       error: async (e) => { // timeout
         resolver() // can only be timeout,so we are done
+      },
+      complete: async () => {
+        resolver()
       }
     })
 
-  await onNext() // initiate the event chain!
-  await promise // resolved on timeout
+  await onNext() // initiate the event chain! or
+  await promise // resolved on timeout or done
   sbs.unsubscribe()
   return count
 }
@@ -170,7 +185,7 @@ async function oneLoopUntilTimeout ({ maxDelay = 3000, maxItems = -1, subject, o
 function pbOps (name, direction) {
   const start = perf.now()
   const progressBar = new Progress.Bar({
-    format: `${name} [{bar}] | n:{value} direction:{direction} rate:{rate}/s elapsed:{elapsed}s id:{id} loopCount:{loopCount}`
+    format: `${name} [{bar}] | n:{value} direction:{direction} rate:{rate}/s elapsed:{elapsed}s id:{id} loops:{loops} loopCount:{loopCount}`
     // to debug loop stuff
     // format: `${name} [{bar}] | n:{value} direction:{direction} rate:{rate}/s elapsed:{elapsed}s  id:{id} loop[CZC:{consecutiveZeroCounts} loops:{loops} loopCount:{loopCount} count:{count}]`
   })

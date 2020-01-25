@@ -4,6 +4,8 @@ Download Google Photos with puppeteer
 
 ## TODO
 
+- exactTermination criteria (after onItem)
+- combine onItem and onNext
 - Hangs: related to teardown, and pb.stop, both need to be called (finally)
 - position First,Last, EnterDetail
 - replace stability charts below with screencaptures

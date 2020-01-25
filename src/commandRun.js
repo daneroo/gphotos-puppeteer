@@ -39,7 +39,7 @@ async function handler (argv) {
   const users = await getUsers({ basePath })
   // const users = ['peru.lauzon@gmail.com', 'daniel.lauzon@gmail.com']
   for (const user of users) { // .slice(0, 1) .slice(-1)
-    const maxIterations = 1
+    const maxIterations = 5
     for (let it = 0; it < maxIterations; it++) {
       console.log(`-Run: user:${user} iteration:${it + 1}/${maxIterations}`)
       const { browser, mainPage, userDownloadDir } = await launchBrowser({ basePath, userId: user, headless })
