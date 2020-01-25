@@ -22,7 +22,7 @@ module.exports = {
           alias: 'u',
           describe: 'select which user profile to use (default is to iterate over all authenticated users)'
         },
-        maxIterations: {
+        iterations: {
           alias: 'i',
           default: 1,
           describe: 'Number of iterations to perform'
@@ -40,13 +40,13 @@ module.exports = {
 
 async function handler (argv) {
   let exceptions = 0
-  const { user, mode, direction, maxIterations, basePath, headless, verbose, progress } = argv
+  const { user, mode, direction, iterations, basePath, headless, verbose, progress } = argv
 
   console.info('Run Command Options:', { argv })
 
   const users = (user) ? [user] : await getUsers({ basePath })
   for (const user of users) {
-    for (let it = 0; it < maxIterations; it++) {
+    for (let it = 0; it < iterations; it++) {
       const { browser, mainPage, userDownloadDir } = await launchBrowser({ basePath, userId: user, headless })
 
       try {
@@ -54,7 +54,7 @@ async function handler (argv) {
         if (!userId) {
           throw new Error(`Authentication failed user:${user}, name:${name}`)
         }
-        console.log(`\nRunning iteration:${it + 1}/${maxIterations} as ${name} (${userId || ''})`)
+        console.log(`\nRunning iteration:${it + 1}/${iterations} as ${name} (${userId || ''})`)
 
         if (mode === 'listAlbum') {
           await mainPage.reload({ waitUntil: ['load'] })
@@ -79,7 +79,7 @@ async function handler (argv) {
         exceptions++
         console.error(err)
       }
-      // console.log(`Iteration ${it + 1}/${maxIterations} terminated for ${user}. Closing browser`)
+      // console.log(`Iteration ${it + 1}/${iterations} terminated for ${user}. Closing browser`)
       await browser.close()
     }
   }
