@@ -38,7 +38,7 @@ async function moveDownloadedFile (filename, id, downloadDir) {
     }
   }
   if (lastError) {
-    console.error(`Error::mv ${filename} to ${newDir}: ${maxIterations} attempts elapsed:${perf.since(start)}`, lastError)
+    // console.error(`Error::mv ${filename} to ${newDir}: ${maxIterations} attempts elapsed:${perf.since(start)}`, lastError)
   } else {
     // perf.log(`mv ${filename} to ${newDir} ${iterations}`, start, 1)
   }

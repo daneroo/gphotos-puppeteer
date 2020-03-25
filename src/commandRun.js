@@ -42,7 +42,7 @@ async function handler (argv) {
   let exceptions = 0
   const { user, mode, direction, iterations, basePath, headless, verbose, progress } = argv
 
-  console.info('Run Command Options:', { argv })
+  // console.info('Run Command Options:', { argv })
 
   const users = (user) ? [user] : await getUsers({ basePath })
   for (const user of users) {
@@ -54,7 +54,9 @@ async function handler (argv) {
         if (!userId) {
           throw new Error(`Authentication failed user:${user}, name:${name}`)
         }
-        console.log(`\nRunning iteration:${it + 1}/${iterations} as ${name} (${userId || ''})`)
+        if (it === 0 || it === iterations - 1) {
+          { console.log(`Running iteration:${it + 1}/${iterations} as ${name} (${userId || ''})`) }
+        }
 
         if (mode === 'listAlbum') {
           await mainPage.reload({ waitUntil: ['load'] })

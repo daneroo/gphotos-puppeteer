@@ -5,9 +5,12 @@ Download Google Photos with puppeteer
 ## TODO
 
 - Combine onItem and onNext
-- Replace stability charts below with screencaptures
-- Finish flow->rxlist->flow
+  - alternatives from flow before folding in
+  - setup/onItem/teardown/ (setup includes positioning)
 - Off by one error counts (n, exists) -> persisted,deduped?
+  - Debug loop conditions/start/termination (timeout,same,count,..)
+- aFinish flow->rxlist->flow
+- Replace stability charts below with screencaptures
 - Explore <https://github.com/Qard/channel-surfer> as well as RxJS Subject - for Go architecture..
 - Retry on failed download: XX nnnn Response (AF1Qi...)  was not resolved in 5000ms
 - Include bandwidth in metrics?

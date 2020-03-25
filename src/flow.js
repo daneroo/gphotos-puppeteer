@@ -38,7 +38,11 @@ const modes = {
       await moveDownloadedFile(filename, id, downloadDir)
       const newPath = path.join(downloadDir, id, filename)
       // TODO(daneroo): unhandled Rejection>
-      await perkeep.putLocked(newPath, id)
+      try {
+        await perkeep.putLocked(newPath, id)
+      } catch (e) {
+
+      }
     }
   }
 }
@@ -98,7 +102,7 @@ async function loopDetailPages (page, downloadDir, modeName = 'list') {
             // n,id are also in the timeoutValue (eitherResponseOrTimeout)
             counts.unresolved++
             unresolveds.push({ n, id })
-            console.log(`XX ${n} Response (${id}) was not resolved in ${eitherResponseOrTimeout.timeout}ms`)
+            // console.log(`XX ${n} Response (${id}) was not resolved in ${eitherResponseOrTimeout.timeout}ms`)
           } else { // our response resolved before timeout, the download is initiated
             const { /* id, */ filename /*, url, elapsed */ } = eitherResponseOrTimeout
             // console.log('>>', n, filename, elapsed, id, url.substring(0, 80)) // .substring(27, 57)

@@ -185,6 +185,7 @@ async function oneLoopUntilTimeout ({ maxDelay = 3000, maxItems = -1, subject, o
 function pbOps (name, direction) {
   const start = perf.now()
   const progressBar = new Progress.Bar({
+    // clearOnComplete: true,
     format: `${name} [{bar}] | n:{value} direction:{direction} rate:{rate}/s elapsed:{elapsed}s id:{id} loops:{loops} loopCount:{loopCount}`
     // to debug loop stuff
     // format: `${name} [{bar}] | n:{value} direction:{direction} rate:{rate}/s elapsed:{elapsed}s  id:{id} loop[CZC:{consecutiveZeroCounts} loops:{loops} loopCount:{loopCount} count:{count}]`
