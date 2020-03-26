@@ -22,6 +22,27 @@ Download Google Photos with puppeteer
 - Gatsby Site for monitoring, browsing
 - Alternative for listing with Google [Photos Library API](https://developers.google.com/photos/library/reference/rest)
 
+## CIFS/SMB/Samba
+
+### Mounted on host
+
+```bash
+# transfer existing profiles:
+rsync -n -av --progress --exclude downloads  ./data/ /Volumes/gphotos-puppeteer/
+
+# invoke gphotos-puppeteer
+ ./gphotos-puppeteer -b /Volumes/gphotos-puppeteer/ auth
+ ./gphotos-puppeteer -b /Volumes/gphotos-puppeteer/ run -u daniel.lauzon@gmail.com -m files
+```
+
+### Mounted in docker container
+
+For puppeteer in docker,
+see <https://github.com/puppeteer/puppeteer/blob/master/docs/troubleshooting.md#chrome-headless-doesnt-launch-on-unix>
+and <https://github.com/puppeteer/puppeteer/blob/master/docs/troubleshooting.md#running-puppeteer-in-docker>
+
+Also my private repo: <https://gitlab.com/daneroo/taurus/-/blob/master/packages/scrape/Dockerfile>
+
 ## Starting puppeteer's Chromium manually
 
 One of my accounts does not allow me to log in to google with puppeteer's default options configured, the following invocation was sufficient to create a profile (manually) that could then be re-used with puppeteer's default options:
